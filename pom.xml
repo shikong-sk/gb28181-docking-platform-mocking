@@ -17,6 +17,8 @@
 	<modules>
 		<module>gb28181-mocking-starter</module>
 		<module>gb28181-mocking-orm</module>
+		<module>gb28181-mocking-service</module>
+		<module>gb28181-mocking-api</module>
 	</modules>
 
 	<properties>
@@ -54,6 +56,8 @@
 <!--		<docker.registry.username>XXX</docker.registry.username>-->
 <!--		<docker.registry.password>XXX</docker.registry.password>-->
 		<docker.maven.plugin.version>1.4.13</docker.maven.plugin.version>
+
+		<gb28181.docking.version>0.0.1-SNAPSHOT</gb28181.docking.version>
 	</properties>
 
 	<profiles>
@@ -100,9 +104,22 @@
 			<dependency>
 				<groupId>cn.skcks.docking</groupId>
 				<artifactId>gb28181</artifactId>
-				<version>0.0.1-SNAPSHOT</version>
+				<version>${gb28181.docking.version}</version>
 				<type>pom</type>
 			</dependency>
+
+			<dependency>
+				<groupId>cn.skcks.docking.gb28181</groupId>
+				<artifactId>common</artifactId>
+				<version>${gb28181.docking.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>cn.skcks.docking</groupId>
+				<artifactId>zlmediakit-service</artifactId>
+				<version>${gb28181.docking.version}</version>
+			</dependency>
+
 			<!--MapStruct-->
 			<dependency>
 				<groupId>org.mapstruct</groupId>
