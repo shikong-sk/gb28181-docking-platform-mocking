@@ -15,7 +15,8 @@
 	<name>gb28181-docking-platform-mocking</name>
 	<description>GB28181 Docking Platform</description>
 	<modules>
-		<module>starter</module>
+		<module>gb28181-mocking-starter</module>
+		<module>gb28181-mocking-orm</module>
 	</modules>
 
 	<properties>
@@ -209,6 +210,8 @@
 					<executions>
 						<execution>
 							<id>Generate MyBatis Artifacts</id>
+							<!--打包时不自动执行-->
+							<phase>deploy</phase>
 							<goals>
 								<goal>generate</goal>
 							</goals>

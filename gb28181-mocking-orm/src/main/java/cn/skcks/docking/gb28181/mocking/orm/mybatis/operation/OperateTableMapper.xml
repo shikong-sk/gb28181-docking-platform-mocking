@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.skcks.docking.gb28181.orm.mybatis.operation.OperateTableMapper">
+    <update id="createDeviceTable">
+        CREATE TABLE `mocking_device` (
+                                          `id` bigint NOT NULL AUTO_INCREMENT,
+                                          `device_code` varchar(50) NOT NULL,
+                                          `gb_device_id` varbinary(50) NOT NULL,
+                                          `name` varchar(255) DEFAULT NULL,
+                                          `address` varchar(255) DEFAULT NULL,
+                                          PRIMARY KEY (`id`),
+                                          UNIQUE KEY `device_code` (`device_code`),
+                                          UNIQUE KEY `gb_device_id` (`gb_device_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    </update>
+</mapper>
