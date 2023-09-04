@@ -80,6 +80,7 @@
 	<repositories>
 		<repository>
 			<id>gb28181-docking-platform-mvn-repo</id>
+			<!--<url>http://192.168.1.8:20080/zxb/gb28181-docking-platform-mvn-repo/-/raw/master/</url>-->
 			<url>http://git.skcks.cn/Shikong/gb28181-docking-platform-mvn-repo/raw/branch/master/</url>
 		</repository>
 	</repositories>
