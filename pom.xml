@@ -239,7 +239,7 @@
 					</executions>
 					<configuration>
 						<skip>${skip.docker}</skip>
-						<repository>skcks.cn/gb28181-docking-platform</repository>
+						<repository>skcks.cn/gb28181-docking-platform-mocking</repository>
 						<tag>${project.version}</tag>
 						<buildArgs>
 							<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
