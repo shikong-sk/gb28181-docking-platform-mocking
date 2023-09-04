@@ -1,0 +1,59 @@
+server:
+  port: 28181
+
+project:
+  version: @project.version@
+
+spring:
+  data:
+    redis:
+      # [必须修改] Redis服务器IP, REDIS安装在本机的,使用127.0.0.1
+      #    host: 192.168.1.241
+      host: 192.168.1.241
+      # [必须修改] 端口号
+      port: 6379
+      # [可选] 数据库 DB
+      database: 15
+      # [可选] 访问密码,若你的redis服务器没有设置密码，就不需要用密码去连接
+      password:
+      # [可选] 超时时间
+      timeout: 10000
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 123456a
+    url: jdbc:mysql://192.168.1.241:3306/gb28181_docking_platform?createDatabaseIfNotExist=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+
+gb28181:
+  # 作为28181服务器的配置
+  sip:
+    # [必须修改] 本机的IP，对应你的网卡，监听什么ip就是使用什么网卡，
+    # 如果不明白，就使用0.0.0.0，大部分情况都是可以的
+    # 请不要使用127.0.0.1，任何包括localhost在内的域名都是不可以的。
+    ip:
+      - 10.27.0.1
+      - 192.168.0.195
+#      - 10.10.10.20
+#      - 10.27.0.6
+    # [可选] 28181服务监听的端口
+    port: 5060
+    # 根据国标6.1.2中规定，domain宜采用ID统一编码的前十位编码。国标附录D中定义前8位为中心编码（由省级、市级、区级、基层编号组成，参照GB/T 2260-2007）
+    # 后两位为行业编码，定义参照附录D.3
+    # 3701020049标识山东济南历下区 信息行业接入
+    # [可选]
+    domain: 4405010000
+    # [可选]
+    id: 44050100002000000002
+    # [可选] 默认设备认证密码，后续扩展使用设备单独密码, 移除密码将不进行校验
+    password: 123456
+    # 是否存储alarm信息
+    alarm: true
+
+media:
+  ip: 192.168.10.32
+  url: 'http://192.168.3.12:5081'
+  #  url: 'http://10.10.10.200:12580/anything/'
+  id: amrWMKmbKqoBjRQ9
+#  secret: 035c73f7-bb6b-4889-a715-d9eb2d1925cc
+  secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
