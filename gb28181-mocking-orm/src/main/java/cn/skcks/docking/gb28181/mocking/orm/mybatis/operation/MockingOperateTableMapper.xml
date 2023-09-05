@@ -2,9 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="cn.skcks.docking.gb28181.orm.mybatis.operation.OperateTableMapper">
+<mapper namespace="cn.skcks.docking.gb28181.mocking.orm.mybatis.operation.MockingOperateTableMapper">
     <update id="createDeviceTable">
-        CREATE TABLE `mocking_device` (
+        CREATE TABLE IF NOT EXISTS `mocking_device` (
                                           `id` bigint NOT NULL AUTO_INCREMENT,
                                           `device_code` varchar(50) NOT NULL,
                                           `gb_device_id` varbinary(50) NOT NULL,

@@ -1,5 +1,5 @@
 server:
-  port: 28181
+  port: 18182
 
 project:
   version: @project.version@
