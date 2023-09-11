@@ -64,7 +64,7 @@
 		<profile>
 			<id>jar</id>
 			<properties>
-					<skip.docker>true</skip.docker>
+				<skip.docker>true</skip.docker>
 			</properties>
 			<activation>
 				<activeByDefault>true</activeByDefault>
@@ -106,6 +106,12 @@
 				<artifactId>gb28181</artifactId>
 				<version>${gb28181.docking.version}</version>
 				<type>pom</type>
+			</dependency>
+
+			<dependency>
+				<groupId>cn.skcks.docking.gb28181</groupId>
+				<artifactId>gb28181-service</artifactId>
+				<version>${gb28181.docking.version}</version>
 			</dependency>
 
 			<dependency>

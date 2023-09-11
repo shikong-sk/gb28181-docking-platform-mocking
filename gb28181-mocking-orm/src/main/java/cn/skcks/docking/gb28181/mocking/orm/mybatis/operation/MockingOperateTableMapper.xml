@@ -8,11 +8,12 @@
                                           `id` bigint NOT NULL AUTO_INCREMENT,
                                           `device_code` varchar(50) NOT NULL,
                                           `gb_device_id` varbinary(50) NOT NULL,
+                                          `gb_channel_id` varbinary(50) NOT NULL,
                                           `name` varchar(255) DEFAULT NULL,
                                           `address` varchar(255) DEFAULT NULL,
                                           PRIMARY KEY (`id`),
                                           UNIQUE KEY `device_code` (`device_code`),
-                                          UNIQUE KEY `gb_device_id` (`gb_device_id`)
+                                          UNIQUE KEY `gb_device_id` (`gb_device_id`,`gb_channel_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     </update>
 </mapper>
