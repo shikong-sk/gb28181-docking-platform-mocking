@@ -90,7 +90,7 @@ public class SipRequestBuilder implements ApplicationContextAware {
         String target = StringUtils.joinWith(":", serverConfig.getIp(), serverConfig.getPort());
         SipURI requestURI = getSipURI(serverConfig.getId(), target);
         // via
-        List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), serverConfig.getTransport(), viaTag);
+        List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), sipConfig.getTransport(), viaTag);
 
         // from
         String from = StringUtils.joinWith(":", ip, port);
