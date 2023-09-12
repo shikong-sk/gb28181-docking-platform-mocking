@@ -89,7 +89,7 @@ public class SipRequestBuilder implements ApplicationContextAware {
     }
 
     @SneakyThrows
-    public static Request createRegisterRequestWithAuthorization(MockingDevice device, String ip, int port, long cSeq, String fromTag, String viaTag, CallIdHeader callIdHeader, String callId, WWWAuthenticateHeader www) {
+    public static Request createRegisterRequestWithAuthorization(MockingDevice device, String ip, int port, long cSeq, String fromTag, String viaTag, CallIdHeader callIdHeader, WWWAuthenticateHeader www) {
         Request request = createRegisterRequest(device, ip, port, cSeq, fromTag, viaTag, callIdHeader);
         String realm = www.getRealm();
         String nonce = www.getNonce();

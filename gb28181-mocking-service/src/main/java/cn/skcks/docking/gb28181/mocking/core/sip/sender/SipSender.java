@@ -5,6 +5,7 @@ import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import javax.sip.ListeningPoint;
 import javax.sip.SipException;
