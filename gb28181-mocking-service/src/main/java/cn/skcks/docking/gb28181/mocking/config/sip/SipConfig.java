@@ -26,6 +26,8 @@ public class SipConfig {
 
 	private String password;
 
+	private int expire = 3600;
+
 	Integer ptzSpeed = 50;
 
 	Integer registerTimeInterval = 120;

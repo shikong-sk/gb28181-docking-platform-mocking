@@ -11,6 +11,7 @@ import org.springframework.context.annotation.ComponentScan;
         "cn.skcks.docking.gb28181.annotation",
         "cn.skcks.docking.gb28181.common",
         "cn.skcks.docking.gb28181.mocking",
+        "cn.skcks.docking.gb28181.core.sip.utils",
 })
 public class Gb28181MockingStarter {
     public static void main(String[] args) {

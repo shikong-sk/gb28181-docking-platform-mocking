@@ -6,6 +6,7 @@ import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import org.springframework.util.CollectionUtils;
 @RequiredArgsConstructor
 @Component
 @DependsOn("mockingOrmInitService")
+@ComponentScan("cn.skcks.docking.gb28181.core.sip.executor")
 public class SipStarter implements SmartLifecycle {
     private final SipService sipService;
     private final SipConfig sipConfig;

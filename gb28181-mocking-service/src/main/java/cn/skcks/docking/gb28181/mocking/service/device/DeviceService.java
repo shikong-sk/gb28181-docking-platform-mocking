@@ -119,6 +119,10 @@ public class DeviceService {
         return deviceMapper.updateByPrimaryKey(device) > 0;
     }
 
+    public List<MockingDevice> getAllDevice(){
+       return deviceMapper.select(u -> u.orderBy(MockingDeviceDynamicSqlSupport.id.descending()));
+    }
+
     /**
      * 分页查询设备
      * @param page 页数
