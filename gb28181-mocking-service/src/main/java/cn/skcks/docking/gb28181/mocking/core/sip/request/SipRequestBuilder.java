@@ -42,38 +42,6 @@ public class SipRequestBuilder implements ApplicationContextAware {
     }
 
     @SneakyThrows
-    private static SipURI getSipURI(String id, String address){
-        return MessageHelper.createSipURI(id, address);
-    }
-
-    @SneakyThrows
-    private static Address getAddress(SipURI uri){
-        return MessageHelper.createAddress(uri);
-    }
-
-    @SneakyThrows
-    private static FromHeader getFromHeader(Address fromAddress, String fromTag){
-        return MessageHelper.createFromHeader(fromAddress, fromTag);
-    }
-
-    @SneakyThrows
-    private static ToHeader getToHeader(Address toAddress, String toTag){
-        return MessageHelper.createToHeader(toAddress, toTag);
-    }
-
-    @SneakyThrows
-    private static MaxForwardsHeader getMaxForwardsHeader(int maxForwards){
-        return getSipFactory().createHeaderFactory().createMaxForwardsHeader(maxForwards);
-    }
-
-    @SneakyThrows
-    private static List<ViaHeader> getDeviceViaHeaders(DockingDevice device, String viaTag){
-        ViaHeader viaHeader = getSipFactory().createHeaderFactory().createViaHeader(device.getLocalIp(), serverConfig.getPort(), device.getTransport(), viaTag);
-        viaHeader.setRPort();
-        return Collections.singletonList(viaHeader);
-    }
-
-    @SneakyThrows
     private static List<ViaHeader> getViaHeaders(String ip,int port, String transport, String viaTag){
         ViaHeader viaHeader = getSipFactory().createHeaderFactory().createViaHeader(ip, port, transport, viaTag);
         viaHeader.setRPort();
@@ -88,21 +56,21 @@ public class SipRequestBuilder implements ApplicationContextAware {
     @SneakyThrows
     public static Request createRegisterRequest(MockingDevice device, String ip, int port, long cSeq, String fromTag, String viaTag, CallIdHeader callIdHeader) {
         String target = StringUtils.joinWith(":", serverConfig.getIp(), serverConfig.getPort());
-        SipURI requestURI = getSipURI(serverConfig.getId(), target);
+        SipURI requestURI = MessageHelper.createSipURI(serverConfig.getId(), target);
         // via
         List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), sipConfig.getTransport(), viaTag);
 
         // from
         String from = StringUtils.joinWith(":", ip, port);
-        SipURI fromSipURI = getSipURI(device.getGbDeviceId(), from);
-        Address fromAddress = getAddress(fromSipURI);
-        FromHeader fromHeader = getFromHeader(fromAddress, fromTag);
+        SipURI fromSipURI = MessageHelper.createSipURI(device.getGbDeviceId(), from);
+        Address fromAddress = MessageHelper.createAddress(fromSipURI);
+        FromHeader fromHeader = MessageHelper.createFromHeader(fromAddress, fromTag);
 
         // to
-        ToHeader toHeader = getToHeader(fromAddress, null);
+        ToHeader toHeader = MessageHelper.createToHeader(fromAddress, null);
 
         // forwards
-        MaxForwardsHeader maxForwardsHeader = getMaxForwardsHeader(70);
+        MaxForwardsHeader maxForwardsHeader = MessageHelper.createMaxForwardsHeader(70);
 
         // ceq
         CSeqHeader cSeqHeader = getCSeqHeader(cSeq, Request.REGISTER);
@@ -129,7 +97,7 @@ public class SipRequestBuilder implements ApplicationContextAware {
         String qop = www.getQop();
 
         String target = StringUtils.joinWith(":", serverConfig.getIp(), serverConfig.getPort());
-        SipURI requestURI = getSipURI(serverConfig.getId(), target);
+        SipURI requestURI = MessageHelper.createSipURI(serverConfig.getId(), target);
         String cNonce = null;
         String nc = "00000001";
         if (qop != null) {
