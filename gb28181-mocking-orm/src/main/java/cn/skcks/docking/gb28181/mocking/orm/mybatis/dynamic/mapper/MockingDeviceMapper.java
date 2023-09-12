@@ -32,7 +32,7 @@ import org.mybatis.dynamic.sql.util.mybatis3.MyBatis3Utils;
 @Mapper
 public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapper, CommonInsertMapper<MockingDevice>, CommonUpdateMapper {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
-    BasicColumn[] selectList = BasicColumn.columnList(id, deviceCode, name, address, gbDeviceId);
+    BasicColumn[] selectList = BasicColumn.columnList(id, deviceCode, name, address, gbDeviceId, gbChannelId);
 
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
     @SelectProvider(type=SqlProviderAdapter.class, method="select")
@@ -41,7 +41,8 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
         @Result(column="device_code", property="deviceCode", jdbcType=JdbcType.VARCHAR),
         @Result(column="name", property="name", jdbcType=JdbcType.VARCHAR),
         @Result(column="address", property="address", jdbcType=JdbcType.VARCHAR),
-        @Result(column="gb_device_id", property="gbDeviceId", jdbcType=JdbcType.VARBINARY)
+        @Result(column="gb_device_id", property="gbDeviceId", jdbcType=JdbcType.VARBINARY),
+        @Result(column="gb_channel_id", property="gbChannelId", jdbcType=JdbcType.VARBINARY)
     })
     List<MockingDevice> selectMany(SelectStatementProvider selectStatement);
 
@@ -75,6 +76,7 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
             .map(name).toProperty("name")
             .map(address).toProperty("address")
             .map(gbDeviceId).toProperty("gbDeviceId")
+            .map(gbChannelId).toProperty("gbChannelId")
         );
     }
 
@@ -86,6 +88,7 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
             .map(name).toProperty("name")
             .map(address).toProperty("address")
             .map(gbDeviceId).toProperty("gbDeviceId")
+            .map(gbChannelId).toProperty("gbChannelId")
         );
     }
 
@@ -97,6 +100,7 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
             .map(name).toPropertyWhenPresent("name", row::getName)
             .map(address).toPropertyWhenPresent("address", row::getAddress)
             .map(gbDeviceId).toPropertyWhenPresent("gbDeviceId", row::getGbDeviceId)
+            .map(gbChannelId).toPropertyWhenPresent("gbChannelId", row::getGbChannelId)
         );
     }
 
@@ -133,7 +137,8 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
                 .set(deviceCode).equalTo(row::getDeviceCode)
                 .set(name).equalTo(row::getName)
                 .set(address).equalTo(row::getAddress)
-                .set(gbDeviceId).equalTo(row::getGbDeviceId);
+                .set(gbDeviceId).equalTo(row::getGbDeviceId)
+                .set(gbChannelId).equalTo(row::getGbChannelId);
     }
 
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
@@ -142,7 +147,8 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
                 .set(deviceCode).equalToWhenPresent(row::getDeviceCode)
                 .set(name).equalToWhenPresent(row::getName)
                 .set(address).equalToWhenPresent(row::getAddress)
-                .set(gbDeviceId).equalToWhenPresent(row::getGbDeviceId);
+                .set(gbDeviceId).equalToWhenPresent(row::getGbDeviceId)
+                .set(gbChannelId).equalToWhenPresent(row::getGbChannelId);
     }
 
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
@@ -152,6 +158,7 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
             .set(name).equalTo(row::getName)
             .set(address).equalTo(row::getAddress)
             .set(gbDeviceId).equalTo(row::getGbDeviceId)
+            .set(gbChannelId).equalTo(row::getGbChannelId)
             .where(id, isEqualTo(row::getId))
         );
     }
@@ -163,6 +170,7 @@ public interface MockingDeviceMapper extends CommonCountMapper, CommonDeleteMapp
             .set(name).equalToWhenPresent(row::getName)
             .set(address).equalToWhenPresent(row::getAddress)
             .set(gbDeviceId).equalToWhenPresent(row::getGbDeviceId)
+            .set(gbChannelId).equalToWhenPresent(row::getGbChannelId)
             .where(id, isEqualTo(row::getId))
         );
     }

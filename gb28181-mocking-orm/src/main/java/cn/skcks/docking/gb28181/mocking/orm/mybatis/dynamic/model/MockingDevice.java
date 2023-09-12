@@ -23,6 +23,9 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_device_id")
     private byte[] gbDeviceId;
 
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_channel_id")
+    private byte[] gbChannelId;
+
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.id")
     public Long getId() {
         return id;
@@ -71,5 +74,15 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_device_id")
     public void setGbDeviceId(byte[] gbDeviceId) {
         this.gbDeviceId = gbDeviceId;
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_channel_id")
+    public byte[] getGbChannelId() {
+        return gbChannelId;
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_channel_id")
+    public void setGbChannelId(byte[] gbChannelId) {
+        this.gbChannelId = gbChannelId;
     }
 }
