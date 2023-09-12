@@ -8,6 +8,7 @@ import cn.skcks.docking.gb28181.common.page.PageWrapper;
 import cn.skcks.docking.gb28181.mocking.api.device.convertor.DeviceDTOConvertor;
 import cn.skcks.docking.gb28181.mocking.api.device.dto.AddDeviceDTO;
 import cn.skcks.docking.gb28181.mocking.api.device.dto.DevicePageDTO;
+import cn.skcks.docking.gb28181.mocking.api.device.dto.ModifyDeviceDTO;
 import cn.skcks.docking.gb28181.mocking.config.SwaggerConfig;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
@@ -85,5 +86,11 @@ public class DeviceController {
         MockingDevice MockingDevice = new MockingDevice();
         MockingDevice.setId(id);
         return JsonResponse.success(deviceService.deleteDevice(MockingDevice));
+    }
+
+    @Operation(summary = "根据主键 id 修改指定设备")
+    @PostJson(value = "/modify/id")
+    public JsonResponse<Boolean> modifyById(@RequestBody ModifyDeviceDTO dto){
+        return JsonResponse.success(deviceService.modifyDevice(DeviceDTOConvertor.INSTANCE.dto2dao(dto)));
     }
 }

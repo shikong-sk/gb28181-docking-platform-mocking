@@ -5,7 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class AddDeviceDTO {
+public class ModifyDeviceDTO {
+    @NotBlank(message = "id 不能为空")
+    @Schema(description = "主键id")
+    private Long id;
+
     @NotBlank(message = "设备编码 不能为空")
     @Schema(description = "设备编码")
     private String deviceCode;
@@ -23,5 +27,5 @@ public class AddDeviceDTO {
     private String address;
 
     @Schema(description = "是否启用")
-    private boolean enable = true;
+    private Boolean enable = true;
 }

@@ -27,6 +27,9 @@ public final class MockingDeviceDynamicSqlSupport {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.address")
     public static final SqlColumn<String> address = mockingDevice.address;
 
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
+    public static final SqlColumn<Boolean> enable = mockingDevice.enable;
+
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
     public static final class MockingDevice extends AliasableSqlTable<MockingDevice> {
         public final SqlColumn<Long> id = column("id", JDBCType.BIGINT);
@@ -40,6 +43,8 @@ public final class MockingDeviceDynamicSqlSupport {
         public final SqlColumn<String> name = column("name", JDBCType.VARCHAR);
 
         public final SqlColumn<String> address = column("address", JDBCType.VARCHAR);
+
+        public final SqlColumn<Boolean> enable = column("enable", JDBCType.BIT);
 
         public MockingDevice() {
             super("mocking_device", MockingDevice::new);

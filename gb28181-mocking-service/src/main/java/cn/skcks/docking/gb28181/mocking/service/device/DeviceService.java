@@ -106,6 +106,19 @@ public class DeviceService {
         }
     }
 
+    @SneakyThrows
+    public boolean modifyDevice(MockingDevice device){
+        if(device == null){
+            return false;
+        }
+        Long id = device.getId();
+        if(id == null){
+            throw new JsonException("id 不能为空");
+        }
+
+        return deviceMapper.updateByPrimaryKey(device) > 0;
+    }
+
     /**
      * 分页查询设备
      * @param page 页数

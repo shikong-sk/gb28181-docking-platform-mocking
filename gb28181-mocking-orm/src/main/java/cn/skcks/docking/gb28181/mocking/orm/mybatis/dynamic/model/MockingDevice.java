@@ -26,6 +26,9 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.address")
     private String address;
 
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
+    private Boolean enable;
+
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.id")
     public Long getId() {
         return id;
@@ -84,5 +87,15 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.address")
     public void setAddress(String address) {
         this.address = address == null ? null : address.trim();
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
+    public Boolean getEnable() {
+        return enable;
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
+    public void setEnable(Boolean enable) {
+        this.enable = enable;
     }
 }
