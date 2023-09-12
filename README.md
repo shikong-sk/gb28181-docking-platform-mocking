@@ -35,7 +35,8 @@ chmod +x ./package-docker.sh
 ##### 测试运行
 ```shell
 docker run --name gb28181-mocking --rm \
-  -v `pwd`/application.yml:/opt/gb28181-docking-platform/application.yml \
+  --network host \
+  -v `pwd`/application.yml:/opt/gb28181-docking-platform-mocking/application.yml \
   skcks.cn/gb28181-docking-platform-mocking:0.0.1-SNAPSHOT
 ```
 
