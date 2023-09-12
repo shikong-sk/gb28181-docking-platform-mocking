@@ -7,8 +7,8 @@
         CREATE TABLE IF NOT EXISTS `mocking_device` (
                                           `id` bigint NOT NULL AUTO_INCREMENT,
                                           `device_code` varchar(50) NOT NULL,
-                                          `gb_device_id` varbinary(50) NOT NULL,
-                                          `gb_channel_id` varbinary(50) NOT NULL,
+                                          `gb_device_id` varchar(50) NOT NULL,
+                                          `gb_channel_id` varchar(50) NOT NULL,
                                           `name` varchar(255) DEFAULT NULL,
                                           `address` varchar(255) DEFAULT NULL,
                                           PRIMARY KEY (`id`),

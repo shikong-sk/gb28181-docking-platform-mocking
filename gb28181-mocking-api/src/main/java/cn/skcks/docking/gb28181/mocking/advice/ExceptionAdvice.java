@@ -1,5 +1,6 @@
 package cn.skcks.docking.gb28181.mocking.advice;
 
+import cn.skcks.docking.gb28181.common.json.JsonException;
 import cn.skcks.docking.gb28181.common.json.JsonResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +71,11 @@ public class ExceptionAdvice {
     public JsonResponse<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e){
         log.warn("{}", e.getMessage());
         return JsonResponse.error("参数异常");
+    }
+
+    @ExceptionHandler(JsonException.class)
+    public JsonResponse<String> handleJsonException(JsonException e){
+        return JsonResponse.error(e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
