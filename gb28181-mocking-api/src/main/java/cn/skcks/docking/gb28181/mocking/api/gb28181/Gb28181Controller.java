@@ -11,6 +11,7 @@ import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
 
 @Slf4j
 @Tag(name = "设备信息")
@@ -25,7 +26,7 @@ public class Gb28181Controller {
     }
 
     @GetJson("/register")
-    public JsonResponse<Boolean> register(){
-        return JsonResponse.success(registerService.register());
+    public DeferredResult<JsonResponse<Boolean>> register(){
+        return registerService.register();
     }
 }

@@ -40,8 +40,9 @@ public class SipSender {
             }
             ListeningPoint listeningPoint = listeningPoints[0];
             String ip = listeningPoint.getIPAddress();
+            int port = listeningPoint.getPort();
             try {
-                sipProvider.sendRequest(request.build(sipProvider, ip));
+                sipProvider.sendRequest(request.build(sipProvider, ip, port));
             } catch (SipException e) {
                 log.error("向{} {}:{} 发送请求失败, 异常: {}", ip, listeningPoint.getPort(), listeningPoint.getTransport(), e.getMessage());
             }
@@ -49,6 +50,6 @@ public class SipSender {
     }
 
     public interface SendRequest {
-        Request build(SipProvider provider, String ip);
+        Request build(SipProvider provider, String ip, int port);
     }
 }
