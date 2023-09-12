@@ -97,6 +97,7 @@ public class RegisterService {
                 @Override
                 public void onNext(SIPResponse response) {
                     int statusCode = response.getStatusCode();
+
                     if (statusCode == Response.UNAUTHORIZED && !usedAuthorization) {
                         usedAuthorization = true;
                         WWWAuthenticateHeader authorizationHeader = (WWWAuthenticateHeader) response.getHeader(WWWAuthenticateHeader.NAME);
@@ -114,9 +115,9 @@ public class RegisterService {
                         return;
                     }
 
-                    if (statusCode == Response.UNAUTHORIZED) {
+                    if (statusCode == Response.UNAUTHORIZED || statusCode == Response.FORBIDDEN) {
                         this.onComplete();
-                        String reason = MessageFormat.format("设备: {0}({1}), 注册失败, 认证失败", device.getDeviceCode(), device.getGbDeviceId());
+                        String reason = MessageFormat.format("设备: {0}({1}), 注册失败: 认证失败", device.getDeviceCode(), device.getGbDeviceId());
                         log.error(reason);
                         result.complete(JsonResponse.error(reason));
                         return;

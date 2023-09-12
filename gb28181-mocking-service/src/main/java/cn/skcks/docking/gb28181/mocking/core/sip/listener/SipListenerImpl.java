@@ -55,7 +55,7 @@ public class SipListenerImpl implements SipListener {
         log.debug("{} {}", method, response);
 
         // Success
-        if (((status >= Response.OK) && (status < Response.MULTIPLE_CHOICES)) || status == Response.UNAUTHORIZED) {
+        if (((status >= Response.OK) && (status < Response.MULTIPLE_CHOICES)) || status == Response.UNAUTHORIZED || status == Response.FORBIDDEN) {
             log.debug("传入响应 method => {}", method);
             Optional.ofNullable(responseProcessor.get(method)).ifPresent(processor -> {
                 processor.process(responseEvent);
