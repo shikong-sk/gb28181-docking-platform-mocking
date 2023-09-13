@@ -57,13 +57,11 @@ public class MessageRequestProcessor implements MessageProcessor {
         MessageDTO messageDto = XmlUtils.parse(content, MessageDTO.class, GB28181Constant.CHARSET);
         log.debug("deviceId:{}, 接收到的消息 => {}", deviceId, messageDto);
 
-        Response response = null;
         if(messageDto.getCmdType().equalsIgnoreCase(CmdType.CATALOG)) {
+            sender.send(senderIp, okResponse(request));
             catalogCmdProcessor.process(request, content);
         } else {
-            response = SipResponseBuilder.response(request, Response.NOT_IMPLEMENTED, ResponseStatus.NOT_IMPLEMENTED.getMessage());
-        }
-        if(response != null){
+            Response response = SipResponseBuilder.response(request, Response.NOT_IMPLEMENTED, ResponseStatus.NOT_IMPLEMENTED.getMessage());
             sender.send(senderIp, response);
         }
     }

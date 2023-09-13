@@ -50,13 +50,11 @@ public class CatalogCmdProcessor {
                 .sumNum(Long.valueOf(catalogDeviceListDTO.getNum()))
                 .build();
 
-        long cSeq = request.getCSeq().getSeqNumber() + 1;
         FromHeader fromHeader = request.getFromHeader();
-
         sender.sendRequest((provider, ip, port)->{
             CallIdHeader callIdHeader = provider.getNewCallId();
             return SipRequestBuilder.createMessageRequest(mockingDevice,
-                    ip, port, cSeq, XmlUtils.toXml(catalogResponseDTO), fromHeader.getTag(), callIdHeader);
+                    ip, port, 1, XmlUtils.toXml(catalogResponseDTO), fromHeader.getTag(), callIdHeader);
         });
     }
 }
