@@ -24,7 +24,7 @@ public class KeepaliveService {
 
     public void keepalive(MockingDevice mockingDevice){
         unKeepalive(mockingDevice);
-        scheduledExecutorService.scheduleWithFixedDelay(()->{
+        ScheduledFuture<?> scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             KeepaliveNotifyDTO keepaliveNotifyDTO = KeepaliveNotifyDTO.builder()
                     .deviceId(mockingDevice.getGbDeviceId())
                     .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
@@ -40,7 +40,8 @@ public class KeepaliveService {
                         SipUtil.generateFromTag(),
                         callIdHeader);
             });
-        },0,30, TimeUnit.SECONDS);
+        }, 0, 30, TimeUnit.SECONDS);
+        map.put(mockingDevice.getGbDeviceId(), scheduledFuture);
     }
 
     public void unKeepalive(MockingDevice mockingDevice){
