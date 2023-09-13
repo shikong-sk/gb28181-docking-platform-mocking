@@ -36,8 +36,8 @@ public class DeviceService {
                 s.where(MockingDeviceDynamicSqlSupport.deviceCode, isEqualTo(deviceCode)));
     }
 
-    public List<MockingDevice> getDeviceByGbDeviceId(String gbDeviceId){
-        return deviceMapper.select(s->
+    public Optional<MockingDevice> getDeviceByGbDeviceId(String gbDeviceId){
+        return deviceMapper.selectOne(s->
                 s.where(MockingDeviceDynamicSqlSupport.gbDeviceId,isEqualTo(gbDeviceId)));
     }
 

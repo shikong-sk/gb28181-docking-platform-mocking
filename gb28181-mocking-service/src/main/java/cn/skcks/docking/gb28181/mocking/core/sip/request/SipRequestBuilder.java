@@ -1,10 +1,12 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.request;
 
+import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
 import cn.skcks.docking.gb28181.core.sip.message.MessageHelper;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.config.sip.ServerConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
+import gov.nist.javax.sip.message.MessageFactoryImpl;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeansException;
@@ -14,14 +16,11 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
-import javax.sip.InvalidArgumentException;
-import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
 import javax.sip.header.*;
 import javax.sip.message.Request;
-import java.text.ParseException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -144,14 +143,15 @@ public class SipRequestBuilder implements ApplicationContextAware {
         return request;
     }
 
-    public static Request createMessageRequest(MockingDevice device, String ip, int port,String content, String viaTag, String fromTag, String toTag, CallIdHeader callIdHeader) throws ParseException, InvalidArgumentException, PeerUnavailableException {
+    @SneakyThrows
+    public static Request createMessageRequest(MockingDevice device, String ip, int port,long cSeq,String content, String fromTag, CallIdHeader callIdHeader) {
         Request request;
         String target = StringUtils.joinWith(":", serverConfig.getIp(), serverConfig.getPort());
         // sip uri
         SipURI requestURI = MessageHelper.createSipURI(serverConfig.getId(), target);
 
         // via
-        List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), sipConfig.getTransport(), viaTag);
+        List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), sipConfig.getTransport(), null );
 
         String from = StringUtils.joinWith(":", ip, port);
         // from
@@ -161,21 +161,23 @@ public class SipRequestBuilder implements ApplicationContextAware {
         // to
         SipURI toSipURI = MessageHelper.createSipURI(serverConfig.getId(), target);
         Address toAddress = MessageHelper.createAddress(toSipURI);
-        ToHeader toHeader = MessageHelper.createToHeader(toAddress, toTag);
+        ToHeader toHeader = MessageHelper.createToHeader(toAddress, null);
 
         // Forwards
         MaxForwardsHeader maxForwards = MessageHelper.createMaxForwardsHeader(70);
         // ceq
-//        CSeqHeader cSeqHeader = getSipFactory().createHeaderFactory().createCSeqHeader(getCSeq(), Request.MESSAGE);
+        CSeqHeader cSeqHeader = getSipFactory().createHeaderFactory().createCSeqHeader(cSeq, Request.MESSAGE);
 
-//        request = getSipFactory().createMessageFactory().createRequest(requestURI, Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader,
-//                toHeader, viaHeaders, maxForwards);
+        // 使用 GB28181 默认编码 否则中文将会乱码
+        MessageFactoryImpl messageFactory = (MessageFactoryImpl) getSipFactory().createMessageFactory();
+        messageFactory.setDefaultContentEncodingCharset(GB28181Constant.CHARSET);
+        request = messageFactory.createRequest(requestURI, Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader,
+                toHeader, viaHeaders, maxForwards);
 
-//        request.addHeader(SipUtil.createUserAgentHeader());
-//
-//        ContentTypeHeader contentTypeHeader = getSipFactory().createHeaderFactory().createContentTypeHeader("Application", "MANSCDP+xml");
-//        request.setContent(content, contentTypeHeader);
-//        return request;
-        return null;
+        request.addHeader(SipUtil.createUserAgentHeader());
+
+        ContentTypeHeader contentTypeHeader = getSipFactory().createHeaderFactory().createContentTypeHeader("Application", "MANSCDP+xml");
+        request.setContent(content, contentTypeHeader);
+        return request;
     }
 }

@@ -22,8 +22,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @Slf4j
 @Tag(name = "设备信息")
 @RestController
@@ -59,8 +57,8 @@ public class DeviceController {
 
     @Operation(summary = "根据国标id(20位) 查询指定设备信息")
     @GetJson("/info/gbDeviceId")
-    public JsonResponse<List<MockingDevice>> infoByGbDeviceId(@RequestParam String gbDeviceId) {
-        List<MockingDevice> MockingDevice = deviceService.getDeviceByGbDeviceId(gbDeviceId);
+    public JsonResponse<MockingDevice> infoByGbDeviceId(@RequestParam String gbDeviceId) {
+        MockingDevice MockingDevice = deviceService.getDeviceByGbDeviceId(gbDeviceId).orElse(null);
         return JsonResponse.success(MockingDevice);
     }
 

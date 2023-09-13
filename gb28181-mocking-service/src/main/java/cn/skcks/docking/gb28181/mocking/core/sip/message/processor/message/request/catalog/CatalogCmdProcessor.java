@@ -5,6 +5,8 @@ import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.reque
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.catalog.dto.CatalogItemDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.catalog.dto.CatalogRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.catalog.dto.CatalogResponseDTO;
+import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
+import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
 import gov.nist.javax.sip.message.SIPRequest;
@@ -12,12 +14,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import javax.sip.header.CallIdHeader;
+import javax.sip.header.FromHeader;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
 public class CatalogCmdProcessor {
+    private final SipSender sender;
     private final DeviceService deviceService;
 
     public void process(SIPRequest request, byte[] content){
@@ -25,15 +31,17 @@ public class CatalogCmdProcessor {
         String sn = catalogRequestDTO.getSn();
         String deviceId = catalogRequestDTO.getDeviceId();
 
-        List<MockingDevice> mockingDeviceList = deviceService.getDeviceByGbDeviceId(deviceId);
-        List<CatalogItemDTO> catalogItemDTOList = mockingDeviceList.stream()
-                .filter(MockingDevice::getEnable)
-                .map(item -> CatalogItemDTO.builder()
-                        .deviceId(item.getGbChannelId())
-                        .name(item.getName())
-                        .address(item.getAddress())
-                        .manufacturer(item.getName())
-                        .build()).toList();
+        MockingDevice mockingDevice = deviceService.getDeviceByGbDeviceId(deviceId).orElse(null);
+        if(mockingDevice == null){
+            return;
+        }
+        CatalogItemDTO catalogItemDTO = CatalogItemDTO.builder()
+                .deviceId(mockingDevice.getGbChannelId())
+                .name(mockingDevice.getName())
+                .address(mockingDevice.getAddress())
+                .manufacturer(mockingDevice.getName())
+                .build();
+        List<CatalogItemDTO> catalogItemDTOList = Collections.singletonList(catalogItemDTO);
         CatalogDeviceListDTO catalogDeviceListDTO = new CatalogDeviceListDTO(catalogItemDTOList.size(), catalogItemDTOList);
         CatalogResponseDTO catalogResponseDTO = CatalogResponseDTO.builder()
                 .sn(sn)
@@ -42,6 +50,13 @@ public class CatalogCmdProcessor {
                 .sumNum(Long.valueOf(catalogDeviceListDTO.getNum()))
                 .build();
 
+        long cSeq = request.getCSeq().getSeqNumber() + 1;
+        FromHeader fromHeader = request.getFromHeader();
 
+        sender.sendRequest((provider, ip, port)->{
+            CallIdHeader callIdHeader = provider.getNewCallId();
+            return SipRequestBuilder.createMessageRequest(mockingDevice,
+                    ip, port, cSeq, XmlUtils.toXml(catalogResponseDTO), fromHeader.getTag(), callIdHeader);
+        });
     }
 }
