@@ -10,6 +10,7 @@ import cn.skcks.docking.gb28181.core.sip.message.processor.message.request.dto.M
 import cn.skcks.docking.gb28181.core.sip.message.sender.SipMessageSender;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.catalog.CatalogCmdProcessor;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.deviceinfo.DeviceInfoRequestProcessor;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import gov.nist.javax.sip.message.SIPRequest;
@@ -35,6 +36,7 @@ public class MessageRequestProcessor implements MessageProcessor {
     private final SipMessageSender sender;
 
     private final CatalogCmdProcessor catalogCmdProcessor;
+    private final DeviceInfoRequestProcessor deviceInfoRequestProcessor;
 
     private Response okResponse(SIPRequest request){
         return SipResponseBuilder.response(request, Response.OK, "OK");
@@ -60,6 +62,9 @@ public class MessageRequestProcessor implements MessageProcessor {
         if(messageDto.getCmdType().equalsIgnoreCase(CmdType.CATALOG)) {
             sender.send(senderIp, okResponse(request));
             catalogCmdProcessor.process(request, content);
+        } else if(messageDto.getCmdType().equalsIgnoreCase("DeviceInfo")){
+            sender.send(senderIp, okResponse(request));
+            deviceInfoRequestProcessor.process(request, content);
         } else {
             Response response = SipResponseBuilder.response(request, Response.NOT_IMPLEMENTED, ResponseStatus.NOT_IMPLEMENTED.getMessage());
             sender.send(senderIp, response);
