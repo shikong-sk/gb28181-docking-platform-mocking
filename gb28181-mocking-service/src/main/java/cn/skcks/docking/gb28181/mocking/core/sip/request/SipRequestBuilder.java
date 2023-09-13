@@ -5,7 +5,6 @@ import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.config.sip.ServerConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
-import cn.skcks.docking.gb28181.orm.mybatis.dynamic.model.DockingDevice;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeansException;
@@ -15,11 +14,14 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
+import javax.sip.InvalidArgumentException;
+import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
 import javax.sip.header.*;
 import javax.sip.message.Request;
+import java.text.ParseException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -140,5 +142,40 @@ public class SipRequestBuilder implements ApplicationContextAware {
         }
         request.addHeader(authorizationHeader);
         return request;
+    }
+
+    public static Request createMessageRequest(MockingDevice device, String ip, int port,String content, String viaTag, String fromTag, String toTag, CallIdHeader callIdHeader) throws ParseException, InvalidArgumentException, PeerUnavailableException {
+        Request request;
+        String target = StringUtils.joinWith(":", serverConfig.getIp(), serverConfig.getPort());
+        // sip uri
+        SipURI requestURI = MessageHelper.createSipURI(serverConfig.getId(), target);
+
+        // via
+        List<ViaHeader> viaHeaders = getViaHeaders(serverConfig.getIp(), serverConfig.getPort(), sipConfig.getTransport(), viaTag);
+
+        String from = StringUtils.joinWith(":", ip, port);
+        // from
+        SipURI fromSipURI = MessageHelper.createSipURI(device.getGbDeviceId(), from);
+        Address fromAddress = MessageHelper.createAddress(fromSipURI);
+        FromHeader fromHeader = MessageHelper.createFromHeader(fromAddress, fromTag);
+        // to
+        SipURI toSipURI = MessageHelper.createSipURI(serverConfig.getId(), target);
+        Address toAddress = MessageHelper.createAddress(toSipURI);
+        ToHeader toHeader = MessageHelper.createToHeader(toAddress, toTag);
+
+        // Forwards
+        MaxForwardsHeader maxForwards = MessageHelper.createMaxForwardsHeader(70);
+        // ceq
+//        CSeqHeader cSeqHeader = getSipFactory().createHeaderFactory().createCSeqHeader(getCSeq(), Request.MESSAGE);
+
+//        request = getSipFactory().createMessageFactory().createRequest(requestURI, Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader,
+//                toHeader, viaHeaders, maxForwards);
+
+//        request.addHeader(SipUtil.createUserAgentHeader());
+//
+//        ContentTypeHeader contentTypeHeader = getSipFactory().createHeaderFactory().createContentTypeHeader("Application", "MANSCDP+xml");
+//        request.setContent(content, contentTypeHeader);
+//        return request;
+        return null;
     }
 }
