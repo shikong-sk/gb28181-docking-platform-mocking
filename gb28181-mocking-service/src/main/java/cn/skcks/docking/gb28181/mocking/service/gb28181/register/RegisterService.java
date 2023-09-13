@@ -2,28 +2,21 @@ package cn.skcks.docking.gb28181.mocking.service.gb28181.register;
 
 
 import cn.skcks.docking.gb28181.common.json.JsonResponse;
-import cn.skcks.docking.gb28181.core.sip.executor.DefaultSipExecutor;
-import cn.skcks.docking.gb28181.core.sip.gb28181.constant.CmdType;
-import cn.skcks.docking.gb28181.core.sip.message.processor.message.types.recordinfo.reponse.dto.RecordInfoResponseDTO;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
-import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
+import cn.skcks.docking.gb28181.mocking.service.gb28181.keepalive.KeepaliveService;
 import gov.nist.javax.sip.message.SIPResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.cert.ocsp.Req;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
 
-import javax.sip.SipProvider;
 import javax.sip.header.CallIdHeader;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.Request;
@@ -44,7 +37,7 @@ public class RegisterService {
 
     private final SipSubscribe subscribe;
 
-    private final MockingExecutor executor;
+    private final KeepaliveService keepaliveService;
 
     private static final int TIMEOUT = 60;
 
@@ -73,6 +66,8 @@ public class RegisterService {
 
     @SneakyThrows
     public CompletableFuture<JsonResponse<Boolean>> register(MockingDevice device) {
+        keepaliveService.unKeepalive(device);
+
         CompletableFuture<JsonResponse<Boolean>> result = new CompletableFuture<>();
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         sender.sendRequest((provider, ip, port) -> {
@@ -126,6 +121,7 @@ public class RegisterService {
                     if (statusCode == Response.OK) {
                         log.info("设备: {}({}), 注册成功", device.getDeviceCode(), device.getGbDeviceId());
                         result.complete(JsonResponse.success(null));
+                        keepaliveService.keepalive(device);
                         this.onComplete();
                     }
                 }
