@@ -1,8 +1,8 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.service;
 
+import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.parser.GbStringMsgParserFactory;
 import cn.skcks.docking.gb28181.core.sip.properties.DefaultProperties;
-import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.service.SipService;
 import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import gov.nist.javax.sip.SipProviderImpl;
@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-
 
 import javax.sip.*;
 import java.util.ArrayList;

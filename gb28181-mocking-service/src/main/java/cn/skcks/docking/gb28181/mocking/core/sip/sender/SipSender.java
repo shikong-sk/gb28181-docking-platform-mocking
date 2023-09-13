@@ -4,17 +4,19 @@ import cn.skcks.docking.gb28181.core.sip.service.SipService;
 import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import javax.sip.ListeningPoint;
 import javax.sip.SipException;
 import javax.sip.SipProvider;
 import javax.sip.message.Request;
+import javax.sip.message.Response;
 import java.util.List;
 import java.util.Objects;
 
 @Slf4j
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = {@Lazy})
 @Component
 public class SipSender {
     private final SipService sipService;
@@ -28,6 +30,28 @@ public class SipSender {
         return sipConfig.getIp().stream().map(item -> getProvider(sipConfig.getTransport(), item))
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    public void sendResponse(SipProvider sipProvider, SendResponse response) {
+        log.info("{}", sipProvider);
+        ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
+        if (listeningPoints == null || listeningPoints.length == 0) {
+            log.error("发送响应失败, 未找到有效的监听地址");
+            return;
+        }
+        ListeningPoint listeningPoint = listeningPoints[0];
+        String ip = listeningPoint.getIPAddress();
+        int port = listeningPoint.getPort();
+        try {
+            sipProvider.sendResponse(response.build(sipProvider, ip, port));
+        } catch (SipException e) {
+            log.error("向{} {}:{} 发送响应失败, 异常: {}", ip, listeningPoint.getPort(), listeningPoint.getTransport(), e.getMessage());
+        }
+    }
+
+    public void sendResponse(String senderIp,String transport, SendResponse response) {
+        SipProvider sipProvider = getProvider(transport, senderIp);
+        sendResponse(sipProvider, response);
     }
 
     public void sendRequest(SendRequest request) {
@@ -51,5 +75,9 @@ public class SipSender {
 
     public interface SendRequest {
         Request build(SipProvider provider, String ip, int port);
+    }
+
+    public interface SendResponse {
+        Response build(SipProvider provider, String ip, int port);
     }
 }

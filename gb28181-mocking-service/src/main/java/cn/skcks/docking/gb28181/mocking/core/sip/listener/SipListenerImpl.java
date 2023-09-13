@@ -1,8 +1,12 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.listener;
 
+import cn.skcks.docking.gb28181.common.json.ResponseStatus;
 import cn.skcks.docking.gb28181.core.sip.executor.DefaultSipExecutor;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
+import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
+import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
+import gov.nist.javax.sip.message.SIPRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -21,6 +25,7 @@ import java.util.concurrent.ConcurrentMap;
 @Component
 @Slf4j
 public class SipListenerImpl implements SipListener {
+    private final SipSender sender;
     private final ConcurrentMap<String, MessageProcessor> requestProcessor = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, MessageProcessor> responseProcessor = new ConcurrentHashMap<>();
 
@@ -40,8 +45,14 @@ public class SipListenerImpl implements SipListener {
     public void processRequest(RequestEvent requestEvent) {
         String method = requestEvent.getRequest().getMethod();
         log.debug("传入请求 method => {}", method);
-        Optional.ofNullable(requestProcessor.get(method)).ifPresent(processor -> {
+        Optional.ofNullable(requestProcessor.get(method)).ifPresentOrElse(processor -> {
             processor.process(requestEvent);
+        },()->{
+            SIPRequest request = (SIPRequest)requestEvent.getRequest();
+            String senderIp = request.getLocalAddress().getHostAddress();
+            String transport = request.getTopmostViaHeader().getTransport();
+            Response response = SipResponseBuilder.response(request, Response.NOT_IMPLEMENTED, ResponseStatus.NOT_IMPLEMENTED.getMessage());
+            sender.sendResponse(senderIp, transport, (provider, ip, port)-> response);
         });
     }
 
