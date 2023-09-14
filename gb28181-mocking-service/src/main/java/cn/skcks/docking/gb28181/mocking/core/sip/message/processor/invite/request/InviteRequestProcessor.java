@@ -143,9 +143,9 @@ public class InviteRequestProcessor implements MessageProcessor {
 
     @SneakyThrows
     private void playback(MockingDevice device,GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time){
-        Date start = time.getStart();
-        Date stop = time.getStop();
-        log.info("{} ~ {}", start, time.getStop());
+        Date start = new Date(time.getStartTime() * 1000);
+        Date stop = new Date(time.getStopTime() * 1000);
+        log.info("{} ~ {}", start, stop);
         String channelId = gb28181Description.getOrigin().getUsername();
         log.info("通道id: {}", channelId);
         String address = gb28181Description.getOrigin().getAddress();
