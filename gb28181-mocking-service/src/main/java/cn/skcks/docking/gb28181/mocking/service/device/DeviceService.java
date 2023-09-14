@@ -47,6 +47,11 @@ public class DeviceService {
                         .and(MockingDeviceDynamicSqlSupport.gbChannelId,isEqualTo(channel)));
     }
 
+    public Optional<MockingDevice> getDeviceByGbChannelId(String channel){
+        return deviceMapper.selectOne(s->
+                s.where(MockingDeviceDynamicSqlSupport.gbChannelId,isEqualTo(channel)));
+    }
+
     /**
      * 添加设备
      * @param device 设备
@@ -78,6 +83,13 @@ public class DeviceService {
             throw new JsonException(MessageFormat.format("国标编码 {0}, 通道 {1} 已存在" ,gbDeviceId, channel));
         }
 
+        if(getDeviceByGbChannelId(channel).isPresent()){
+            throw new JsonException(MessageFormat.format("通道 {0} 已存在", channel));
+        }
+
+        if(getDeviceByGbDeviceId(gbDeviceId).isPresent()){
+            throw new JsonException(MessageFormat.format("国标编码 {0} 已存在", gbDeviceId));
+        }
         return deviceMapper.insert(device) > 0;
     }
 

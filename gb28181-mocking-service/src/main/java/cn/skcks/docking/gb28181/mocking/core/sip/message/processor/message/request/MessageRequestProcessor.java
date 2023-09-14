@@ -11,12 +11,14 @@ import cn.skcks.docking.gb28181.core.sip.message.sender.SipMessageSender;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.catalog.CatalogCmdProcessor;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.deviceinfo.DeviceInfoRequestProcessor;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo.RecordInfoRequestProcessor;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import javax.sip.RequestEvent;
@@ -37,6 +39,8 @@ public class MessageRequestProcessor implements MessageProcessor {
 
     private final CatalogCmdProcessor catalogCmdProcessor;
     private final DeviceInfoRequestProcessor deviceInfoRequestProcessor;
+
+    private final RecordInfoRequestProcessor recordInfoRequestProcessor;
 
     private Response okResponse(SIPRequest request){
         return SipResponseBuilder.response(request, Response.OK, "OK");
@@ -59,12 +63,15 @@ public class MessageRequestProcessor implements MessageProcessor {
         MessageDTO messageDto = XmlUtils.parse(content, MessageDTO.class, GB28181Constant.CHARSET);
         log.debug("deviceId:{}, 接收到的消息 => {}", deviceId, messageDto);
 
-        if(messageDto.getCmdType().equalsIgnoreCase(CmdType.CATALOG)) {
+        String cmdType = messageDto.getCmdType();
+        if(cmdType.equalsIgnoreCase(CmdType.CATALOG)) {
             sender.send(senderIp, okResponse(request));
             catalogCmdProcessor.process(request, content);
-        } else if(messageDto.getCmdType().equalsIgnoreCase("DeviceInfo")){
+        } else if(cmdType.equalsIgnoreCase("DeviceInfo")){
             sender.send(senderIp, okResponse(request));
             deviceInfoRequestProcessor.process(request, content);
+        } else if(StringUtils.equalsIgnoreCase(cmdType,CmdType.RECORD_INFO)){
+            recordInfoRequestProcessor.process(request, content);
         } else {
             Response response = SipResponseBuilder.response(request, Response.NOT_IMPLEMENTED, ResponseStatus.NOT_IMPLEMENTED.getMessage());
             sender.send(senderIp, response);

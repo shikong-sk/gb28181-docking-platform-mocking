@@ -1,13 +1,14 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.response;
 
+import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
 import cn.skcks.docking.gb28181.core.sip.message.MessageHelper;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
+import gov.nist.javax.sip.message.MessageFactoryImpl;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.sip.message.MessageFactory;
 import javax.sip.message.Response;
 
 @Slf4j
@@ -18,7 +19,9 @@ public class SipResponseBuilder {
             request.getToHeader().setTag(SipUtil.generateTag());
         }
 
-        MessageFactory messageFactory = MessageHelper.getSipFactory().createMessageFactory();
+        MessageFactoryImpl messageFactory = (MessageFactoryImpl)MessageHelper.getSipFactory().createMessageFactory();
+        // 使用 GB28181 默认编码 否则中文将会乱码
+        messageFactory.setDefaultContentEncodingCharset(GB28181Constant.CHARSET);
         SIPResponse response = (SIPResponse)messageFactory.createResponse(status, request);
         if (message != null) {
             response.setReasonPhrase(message);
