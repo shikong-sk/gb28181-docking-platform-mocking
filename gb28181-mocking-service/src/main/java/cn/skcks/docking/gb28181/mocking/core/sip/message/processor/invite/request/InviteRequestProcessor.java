@@ -138,6 +138,6 @@ public class InviteRequestProcessor implements MessageProcessor {
         Media media = mediaDescription.getMedia();
         int port = media.getMediaPort();
         log.info("目标端口号: {}", port);
-
+        // TODO 推流 && 关流事件订阅
     }
 }
