@@ -130,15 +130,14 @@ public class InviteRequestProcessor implements MessageProcessor {
 
     @SneakyThrows
     private void playback(GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time){
-        Media media = mediaDescription.getMedia();
-        int port = media.getMediaPort();
-        log.info("目标端口号: {}", port);
         log.info("{} ~ {}", time.getStart(), time.getStop());
-
         String channelId = gb28181Description.getOrigin().getUsername();
         log.info("通道id: {}", channelId);
         String address = gb28181Description.getOrigin().getAddress();
         log.info("目标地址: {}", address);
+        Media media = mediaDescription.getMedia();
+        int port = media.getMediaPort();
+        log.info("目标端口号: {}", port);
 
     }
 }
