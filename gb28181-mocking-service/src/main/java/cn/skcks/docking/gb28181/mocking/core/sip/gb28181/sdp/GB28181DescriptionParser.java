@@ -11,21 +11,15 @@ import gov.nist.javax.sdp.parser.SDPParser;
 import java.text.ParseException;
 import java.util.Vector;
 
+@SuppressWarnings("all")
 public class GB28181DescriptionParser extends ParserCore {
     protected Lexer lexer;
     protected Vector sdpMessage;
 
-    /** Creates new SDPAnnounceParser
-     * @param sdpMessage Vector of messages to parse.
-     */
     public GB28181DescriptionParser(Vector sdpMessage) {
         this.sdpMessage = sdpMessage;
     }
 
-    /** Create a new SDPAnnounceParser.
-     *@param message  string containing the sdp announce message.
-     *
-     */
     public GB28181DescriptionParser(String message) {
         int start = 0;
         String line = null;
@@ -83,12 +77,11 @@ public class GB28181DescriptionParser extends ParserCore {
             String field = (String) sdpMessage.elementAt(i);
             SDPParser sdpParser = GB28181DescriptionParserFactory.createParser(field);
             SDPField sdpField = null;
-            if (sdpParser != null)
-            {
+            if (sdpParser != null) {
                 sdpField = sdpParser.parse();
             }
             retval.addField(sdpField);
-            if(sdpField instanceof SsrcField ssrc){
+            if (sdpField instanceof SsrcField ssrc) {
                 retval.setSsrcField(ssrc);
             }
         }
