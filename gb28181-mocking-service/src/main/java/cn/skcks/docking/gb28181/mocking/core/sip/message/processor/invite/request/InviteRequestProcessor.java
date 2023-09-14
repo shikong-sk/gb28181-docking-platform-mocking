@@ -4,11 +4,12 @@ import cn.hutool.core.date.DateUtil;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
-import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
-import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.mapper.MockingDeviceMapper;
+import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
+import cn.skcks.docking.gb28181.mocking.service.device.DeviceProxyService;
+import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
 import gov.nist.javax.sdp.TimeDescriptionImpl;
 import gov.nist.javax.sdp.fields.TimeField;
 import gov.nist.javax.sip.message.SIPRequest;
@@ -24,9 +25,9 @@ import javax.sdp.MediaDescription;
 import javax.sdp.SdpParseException;
 import javax.sdp.SessionName;
 import javax.sip.RequestEvent;
-import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
+import java.util.Date;
 import java.util.EventObject;
 import java.util.Vector;
 
@@ -38,7 +39,9 @@ public class InviteRequestProcessor implements MessageProcessor {
 
     private final SipSender sender;
 
-    private final MockingDeviceMapper mockingDeviceMapper;
+    private final DeviceProxyService deviceProxyService;
+
+    private final DeviceService deviceService;
 
     @PostConstruct
     @Override
@@ -52,13 +55,18 @@ public class InviteRequestProcessor implements MessageProcessor {
     public void process(EventObject eventObject) {
         RequestEvent requestEvent = (RequestEvent) eventObject;
         SIPRequest request = (SIPRequest)requestEvent.getRequest();
-        String deviceId = SipUtil.getUserIdFromFromHeader(request);
-        CallIdHeader callIdHeader = request.getCallIdHeader();
         String senderIp = request.getLocalAddress().getHostAddress();
         String transport = request.getTopmostViaHeader().getTransport();
         String content = new String(request.getRawContent());
         GB28181Description gb28181Description = new GB28181DescriptionParser(content).parse();
         log.info("解析的 sdp信息: \n{}", gb28181Description);
+        String id = gb28181Description.getOrigin().getUsername();
+        MockingDevice device = deviceService.getDeviceByGbChannelId(id).orElse(null);
+        if(device == null){
+            log.error("未能找到 deviceId: {} 的相关信息", id);
+            sender.sendResponse(senderIp, transport, notFound(request));
+            return;
+        }
         Vector<?> mediaDescriptions = gb28181Description.getMediaDescriptions(true);
         log.info("mediaDescriptions {}",mediaDescriptions);
         mediaDescriptions.stream().filter(item->{
@@ -79,9 +87,9 @@ public class InviteRequestProcessor implements MessageProcessor {
                 if(StringUtils.equalsAnyIgnoreCase(type,"Play","PlayBack")){
                     log.info("点播/回放请求");
                     if(StringUtils.equalsIgnoreCase(type,"Play")){
-                        play(gb28181Description, (MediaDescription) item);
+                        play(device, gb28181Description, (MediaDescription) item);
                     } else {
-                        playback(gb28181Description, (MediaDescription) item);
+                        playback(device, gb28181Description, (MediaDescription) item);
                     }
                 } else if(StringUtils.equalsIgnoreCase(type,"Download")){
                     log.info("下载请求");
@@ -98,6 +106,11 @@ public class InviteRequestProcessor implements MessageProcessor {
         });
     }
 
+    private SipSender.SendResponse notFound(SIPRequest request) {
+        return (provider, ip, port) -> SipResponseBuilder.response(request, Response.NOT_FOUND,
+                "Not Found");
+    }
+
     private SipSender.SendResponse unsupported(SIPRequest request) {
         return (provider, ip, port) -> SipResponseBuilder.response(request, Response.UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported Media Type");
@@ -109,11 +122,11 @@ public class InviteRequestProcessor implements MessageProcessor {
      * @param mediaDescription 媒体描述符
      */
     @SneakyThrows
-    private void play(GB28181Description gb28181Description, MediaDescription mediaDescription){
+    private void play(MockingDevice device,GB28181Description gb28181Description, MediaDescription mediaDescription){
         TimeField time = new TimeField();
         time.setStart(DateUtil.offsetMinute(DateUtil.date(), -15));
         time.setStop(DateUtil.date());
-        playback(gb28181Description, mediaDescription, time);
+        playback(device, gb28181Description, mediaDescription, time);
     }
 
     /**
@@ -122,15 +135,17 @@ public class InviteRequestProcessor implements MessageProcessor {
      * @param mediaDescription 媒体描述符
      */
     @SneakyThrows
-    private void playback(GB28181Description gb28181Description, MediaDescription mediaDescription) {
+    private void playback(MockingDevice device,GB28181Description gb28181Description, MediaDescription mediaDescription) {
         TimeDescriptionImpl timeDescription = (TimeDescriptionImpl) gb28181Description.getTimeDescriptions(true).get(0);
         TimeField time = (TimeField) timeDescription.getTime();
-        playback(gb28181Description, mediaDescription, time);
+        playback(device, gb28181Description, mediaDescription, time);
     }
 
     @SneakyThrows
-    private void playback(GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time){
-        log.info("{} ~ {}", time.getStart(), time.getStop());
+    private void playback(MockingDevice device,GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time){
+        Date start = time.getStart();
+        Date stop = time.getStop();
+        log.info("{} ~ {}", start, time.getStop());
         String channelId = gb28181Description.getOrigin().getUsername();
         log.info("通道id: {}", channelId);
         String address = gb28181Description.getOrigin().getAddress();
@@ -138,6 +153,8 @@ public class InviteRequestProcessor implements MessageProcessor {
         Media media = mediaDescription.getMedia();
         int port = media.getMediaPort();
         log.info("目标端口号: {}", port);
+
+        deviceProxyService.proxyVideo2Rtp(device,start,stop);
         // TODO 推流 && 关流事件订阅
     }
 }
