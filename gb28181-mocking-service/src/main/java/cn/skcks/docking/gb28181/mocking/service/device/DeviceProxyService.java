@@ -109,10 +109,11 @@ public class DeviceProxyService {
     public void pushRtp(String fromUrl, String toUrl, long time) {
         log.info("创建推流任务 fromUrl {}, toUrl {}, time: {}", fromUrl, toUrl, time);
         // FFmpeg 调试日志
-        //        FFmpegLogCallback.set();
+//      FFmpegLogCallback.set();
         FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(fromUrl);
+        // 30秒超时
+        grabber.setOption("stimeout", "30000000");
         grabber.start();
-        grabber.flush();
 
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(toUrl, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels());
         recorder.setInterleaved(true);
@@ -120,7 +121,7 @@ public class DeviceProxyService {
         recorder.setVideoOption("tune", "zerolatency");
         recorder.setVideoOption("crf", "25");
 //        recorder.setMaxDelay(500);
-        recorder.setGopSize(10);
+        recorder.setGopSize((int) (grabber.getFrameRate() * 2));
         recorder.setFrameRate(grabber.getFrameRate());
         recorder.setSampleRate(grabber.getSampleRate());
         recorder.setOption("flvflags", "no_duration_filesize");
@@ -139,6 +140,7 @@ public class DeviceProxyService {
         recorder.setFormat("rtp_mpegts");
         recorder.setVideoOption("threads", String.valueOf(Runtime.getRuntime().availableProcessors())); // 解码线程数
         recorder.start(grabber.getFormatContext());
+        grabber.flush();
 
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         AtomicBoolean record = new AtomicBoolean(true);
@@ -147,7 +149,10 @@ public class DeviceProxyService {
             record.set(false);
         }, time, TimeUnit.SECONDS);
         try {
+            long begin = System.currentTimeMillis();
             AVPacket k;
+            long dts = 0;
+            long pts = 0;
             int no_frame_index = 0;
             while (record.get() && no_frame_index < 10 ) {
                 k = grabber.grabPacket();
@@ -156,8 +161,22 @@ public class DeviceProxyService {
                     no_frame_index++;
                     continue;
                 }
+                // 获取到的pkt的dts，pts异常，将此包丢弃掉。
+                if (k.dts() == avutil.AV_NOPTS_VALUE && k.pts() == avutil.AV_NOPTS_VALUE || k.pts() < dts) {
+                    avcodec.av_packet_unref(k);
+                    continue;
+                }
+                // 记录上一pkt的dts，pts
+                dts = k.dts();
+                pts = k.pts();
                 recorder.recordPacket(k);
                 avcodec.av_packet_unref(k);
+                long end = System.currentTimeMillis();
+                long sleep_real = (long) ((1000 / grabber.getFrameRate()) - (end - begin));
+                begin = end;
+                if (sleep_real > 0) {
+                    Thread.sleep(sleep_real);
+                }
             }
             grabber.close();
             recorder.close();
