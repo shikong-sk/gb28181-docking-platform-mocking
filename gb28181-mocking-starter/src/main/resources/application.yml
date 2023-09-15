@@ -53,8 +53,8 @@ gb28181:
     expire: 3600
     transport: "UDP"
   server:
-#    ip: 192.168.10.32
-    ip: 192.168.3.12
+    ip: 192.168.10.32
+#    ip: 192.168.3.12
     port: 5060
     password: 123456
     domain: 4405010000

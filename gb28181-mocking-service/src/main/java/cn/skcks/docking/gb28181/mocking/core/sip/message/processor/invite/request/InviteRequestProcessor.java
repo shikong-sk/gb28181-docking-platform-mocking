@@ -2,15 +2,22 @@ package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.reque
 
 import cn.hutool.core.date.DateUtil;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
+import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
+import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceProxyService;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
+import gov.nist.core.Separators;
+import gov.nist.javax.sdp.SessionDescriptionImpl;
 import gov.nist.javax.sdp.TimeDescriptionImpl;
+import gov.nist.javax.sdp.fields.AttributeField;
+import gov.nist.javax.sdp.fields.ConnectionField;
 import gov.nist.javax.sdp.fields.TimeField;
 import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PostConstruct;
@@ -20,16 +27,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
-import javax.sdp.Media;
-import javax.sdp.MediaDescription;
-import javax.sdp.SdpParseException;
-import javax.sdp.SessionName;
+import javax.sdp.*;
 import javax.sip.RequestEvent;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.EventObject;
 import java.util.Vector;
+import java.util.concurrent.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -42,6 +48,8 @@ public class InviteRequestProcessor implements MessageProcessor {
     private final DeviceProxyService deviceProxyService;
 
     private final DeviceService deviceService;
+
+    private final SipSubscribe subscribe;
 
     @PostConstruct
     @Override
@@ -87,9 +95,9 @@ public class InviteRequestProcessor implements MessageProcessor {
                 if (StringUtils.equalsAnyIgnoreCase(type, "Play", "PlayBack")) {
                     log.info("点播/回放请求");
                     if (StringUtils.equalsIgnoreCase(type, "Play")) {
-                        play(device, gb28181Description, (MediaDescription) item);
+                        play(request, device, gb28181Description, (MediaDescription) item);
                     } else {
-                        playback(device, gb28181Description, (MediaDescription) item);
+                        playback(request, device, gb28181Description, (MediaDescription) item);
                     }
                 } else if (StringUtils.equalsIgnoreCase(type, "Download")) {
                     log.info("下载请求");
@@ -123,11 +131,11 @@ public class InviteRequestProcessor implements MessageProcessor {
      * @param mediaDescription   媒体描述符
      */
     @SneakyThrows
-    private void play(MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
+    private void play(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
         TimeField time = new TimeField();
         time.setStart(DateUtil.offsetMinute(DateUtil.date(), -15));
         time.setStop(DateUtil.date());
-        playback(device, gb28181Description, mediaDescription, time);
+        playback(request, device, gb28181Description, mediaDescription, time);
     }
 
     /**
@@ -137,14 +145,14 @@ public class InviteRequestProcessor implements MessageProcessor {
      * @param mediaDescription   媒体描述符
      */
     @SneakyThrows
-    private void playback(MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
+    private void playback(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
         TimeDescriptionImpl timeDescription = (TimeDescriptionImpl) gb28181Description.getTimeDescriptions(true).get(0);
         TimeField time = (TimeField) timeDescription.getTime();
-        playback(device, gb28181Description, mediaDescription, time);
+        playback(request, device, gb28181Description, mediaDescription, time);
     }
 
     @SneakyThrows
-    private void playback(MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time) {
+    private void playback(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time) {
         Date start = new Date(time.getStartTime() * 1000);
         Date stop = new Date(time.getStopTime() * 1000);
         log.info("{} ~ {}", start, stop);
@@ -156,7 +164,68 @@ public class InviteRequestProcessor implements MessageProcessor {
         int port = media.getMediaPort();
         log.info("目标端口号: {}", port);
 
-        deviceProxyService.proxyVideo2Rtp(device, start, stop, address, port);
-        // TODO 推流 && 关流事件订阅
+        String senderIp = request.getLocalAddress().getHostAddress();
+        SdpFactory sdpFactory = SdpFactory.getInstance();
+        SessionDescriptionImpl sessionDescription = new SessionDescriptionImpl();
+        sessionDescription.setVersion(sdpFactory.createVersion(0));
+        // 目前只配置 ipv4
+        sessionDescription.setOrigin(sdpFactory.createOrigin(channelId, 0, 0, ConnectionField.IN, Connection.IP4, senderIp));
+        sessionDescription.setSessionName(gb28181Description.getSessionName());
+        sessionDescription.setConnection(sdpFactory.createConnection(ConnectionField.IN, Connection.IP4, senderIp));
+        TimeField respTime = new TimeField();
+        respTime.setZero();
+        TimeDescription timeDescription = SdpFactory.getInstance().createTimeDescription(respTime);
+        sessionDescription.setTimeDescriptions(new Vector<>() {{
+            add(timeDescription);
+        }});
+        String[] mediaTypeCodes = new String[]{"98","96"};
+        MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0, SdpConstants.RTP_AVP, mediaTypeCodes);
+        Arrays.stream(mediaTypeCodes).forEach((k)->{
+            String v = MediaSdpHelper.RTPMAP.get(k);
+            mediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
+        });
+        respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute("sendonly", null));
+        GB28181Description description = GB28181Description.Convertor.convert(sessionDescription);
+        description.setSsrcField(gb28181Description.getSsrcField());
+
+        String transport = request.getTopmostViaHeader().getTransport();
+
+        String callId = request.getCallId().getCallId();
+        String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
+        subscribe.getAckSubscribe().addPublisher(key);
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        final ScheduledFuture<?>[] schedule = new ScheduledFuture<?>[1];
+        Flow.Subscriber<SIPRequest> subscriber = new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                log.info("创建 ack 订阅 {}", key);
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(SIPRequest item) {
+                log.info("收到 ack 确认请求: {} 开始推流",key);
+                // RTP 推流
+                deviceProxyService.proxyVideo2Rtp(device, start, stop, address, port);
+                onComplete();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+
+            }
+
+            @Override
+            public void onComplete() {
+                subscribe.getAckSubscribe().delPublisher(key);
+                schedule[0].cancel(true);
+            }
+        };
+        // 60秒超时计时器
+        schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
+        // 推流 ack 事件订阅
+        subscribe.getAckSubscribe().addSubscribe(key, subscriber);
+        // 发送 sdp 响应
+        sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
     }
 }

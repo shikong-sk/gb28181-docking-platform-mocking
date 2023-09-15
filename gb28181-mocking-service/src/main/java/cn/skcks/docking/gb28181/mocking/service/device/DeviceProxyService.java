@@ -44,7 +44,6 @@ public class DeviceProxyService {
         String query = URLUtil.buildQuery(map, StandardCharsets.UTF_8);
         fromUrl = StringUtils.joinWith("?", fromUrl, query);
         log.info("设备: {} 视频 url: {}", deviceCode, fromUrl);
-        rtpAddr = "192.168.1.241";
         String toUrl = StringUtils.joinWith("", "rtp://", rtpAddr, ":", rtpPort);
         long time = DateUtil.between(startTime, endTime, DateUnit.SECOND);
         pushRtp(fromUrl, toUrl, time);
@@ -56,6 +55,7 @@ public class DeviceProxyService {
         // FFmpeg 调试日志
         //        FFmpegLogCallback.set();
         FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(fromUrl);
+        grabber.setFrameRate(30);
         grabber.start();
 
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(toUrl, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels());
