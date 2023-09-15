@@ -62,12 +62,12 @@ public class RecordInfoRequestProcessor {
         recordInfoItemDTO.setStartTime(startTime);
         recordInfoItemDTO.setEndTime(endTime);
         recordInfoItemDTO.setSecrecy(recordInfoRequestDTO.getSecrecy());
-        recordInfoItemDTO.setDeviceId(device.getGbDeviceId());
+        recordInfoItemDTO.setDeviceId(device.getGbChannelId());
 
         List<RecordInfoItemDTO> recordInfoItemDTOList = Collections.singletonList(recordInfoItemDTO);
         RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
         recordInfoResponseDTO.setSn(recordInfoRequestDTO.getSn());
-        recordInfoResponseDTO.setDeviceId(device.getGbDeviceId());
+        recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
         recordInfoResponseDTO.setName(device.getName());
         recordInfoResponseDTO.setSumNum((long) recordInfoItemDTOList.size());
         recordInfoResponseDTO.setRecordList(recordInfoItemDTOList);
