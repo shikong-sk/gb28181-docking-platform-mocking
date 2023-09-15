@@ -23,16 +23,19 @@ public class SipSubscribe {
     private final Executor executor;
     private GenericSubscribe<SIPResponse> registerSubscribe;
     private GenericSubscribe<SIPRequest> ackSubscribe;
+    private GenericSubscribe<SIPRequest> byeSubscribe;
 
     @PostConstruct
     private void init() {
         registerSubscribe = new RegisterSubscribe(executor);
         ackSubscribe = new AckSubscribe(executor);
+        byeSubscribe = new AckSubscribe(executor);
     }
 
     @PreDestroy
     private void destroy() {
         registerSubscribe.close();
         ackSubscribe.close();
+        byeSubscribe.close();
     }
 }

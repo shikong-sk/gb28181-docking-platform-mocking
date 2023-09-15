@@ -206,7 +206,7 @@ public class InviteRequestProcessor implements MessageProcessor {
             public void onNext(SIPRequest item) {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
-                deviceProxyService.proxyVideo2Rtp(device, start, stop, address, port);
+                deviceProxyService.proxyVideo2Rtp(callId, device, start, stop, address, port);
                 onComplete();
             }
 

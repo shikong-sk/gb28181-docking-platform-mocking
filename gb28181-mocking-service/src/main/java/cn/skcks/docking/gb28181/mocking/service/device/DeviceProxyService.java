@@ -4,8 +4,14 @@ import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.URLUtil;
+import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
+import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
+import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
+import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
+import gov.nist.javax.sip.message.SIPRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -17,24 +23,31 @@ import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.springframework.stereotype.Service;
 
+import javax.sip.message.Request;
+import javax.sip.message.Response;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceProxyService {
-    private final DeviceService deviceService;
+    private final MockingExecutor mockingExecutor;
 
     private final DeviceProxyConfig proxyConfig;
 
-    public void proxyVideo2Rtp(MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort){
+    private final SipSubscribe subscribe;
+
+    private final ConcurrentHashMap<String, CompletableFuture<Void>> task = new ConcurrentHashMap<>();
+
+    private final SipSender sender;
+
+    public synchronized void proxyVideo2Rtp(String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort){
         String fromUrl = URLUtil.completeUrl(proxyConfig.getUrl(), "/video");
         HashMap<String, String> map = new HashMap<>(3);
         String deviceCode = device.getDeviceCode();
@@ -46,7 +59,50 @@ public class DeviceProxyService {
         log.info("设备: {} 视频 url: {}", deviceCode, fromUrl);
         String toUrl = StringUtils.joinWith("", "rtp://", rtpAddr, ":", rtpPort);
         long time = DateUtil.between(startTime, endTime, DateUnit.SECOND);
-        pushRtp(fromUrl, toUrl, time);
+
+        String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
+        subscribe.getByeSubscribe().addPublisher(key);
+        Flow.Subscriber<SIPRequest> subscriber = new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                log.info("订阅 bye {}", key);
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(SIPRequest item) {
+                String ip = item.getLocalAddress().getHostAddress();
+                String transPort = item.getTopmostViaHeader().getTransport();
+                sender.sendResponse(ip, transPort,((provider, ip1, port) ->
+                        SipResponseBuilder.response(item, Response.OK, "OK")));
+                onComplete();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                onComplete();
+            }
+
+            @Override
+            public void onComplete() {
+                log.info("bye 订阅结束 {}", key);
+                subscribe.getByeSubscribe().delPublisher(key);
+                Optional.ofNullable(task.get(device.getDeviceCode())).ifPresent(task->{
+                    task.cancel(true);
+                });
+                task.remove(device.getDeviceCode());
+            }
+        };
+        final String finalFromUrl = fromUrl;
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            pushRtp(finalFromUrl, toUrl, time);
+            // 推送结束后 60 秒内未收到 bye 则结束订阅 释放内存
+            scheduledExecutorService.schedule(subscriber::onComplete, time + 60 , TimeUnit.SECONDS);
+        }, mockingExecutor.sipTaskExecutor());
+        task.put(device.getDeviceCode(), future);
+        subscribe.getByeSubscribe().addSubscribe(key, subscriber);
     }
 
     @SneakyThrows
@@ -55,14 +111,16 @@ public class DeviceProxyService {
         // FFmpeg 调试日志
         //        FFmpegLogCallback.set();
         FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(fromUrl);
-        grabber.setOption("re","");
         grabber.start();
+        grabber.flush();
 
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(toUrl, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels());
         recorder.setInterleaved(true);
         recorder.setVideoOption("preset", "ultrafast");
         recorder.setVideoOption("tune", "zerolatency");
         recorder.setVideoOption("crf", "25");
+//        recorder.setMaxDelay(500);
+        recorder.setGopSize(10);
         recorder.setFrameRate(grabber.getFrameRate());
         recorder.setSampleRate(grabber.getSampleRate());
         recorder.setOption("flvflags", "no_duration_filesize");
@@ -90,7 +148,14 @@ public class DeviceProxyService {
         }, time, TimeUnit.SECONDS);
         try {
             AVPacket k;
-            while (record.get() && (k = grabber.grabPacket()) != null) {
+            int no_frame_index = 0;
+            while (record.get() && no_frame_index < 10 ) {
+                k = grabber.grabPacket();
+                if(k == null || k.size() <= 0 || k.data() == null) {
+                    //空包记录次数跳过
+                    no_frame_index++;
+                    continue;
+                }
                 recorder.recordPacket(k);
                 avcodec.av_packet_unref(k);
             }
