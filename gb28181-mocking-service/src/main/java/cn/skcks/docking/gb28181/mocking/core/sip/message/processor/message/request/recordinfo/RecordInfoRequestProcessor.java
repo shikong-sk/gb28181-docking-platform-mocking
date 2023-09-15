@@ -1,5 +1,6 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo;
 
+import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUtil;
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
 import javax.sip.header.CallIdHeader;
 import javax.sip.header.FromHeader;
 import javax.sip.message.Response;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -57,6 +58,22 @@ public class RecordInfoRequestProcessor {
                 DateUtil.format(startTime, DatePattern.NORM_DATETIME_FORMATTER),
                 DateUtil.format(endTime, DatePattern.NORM_DATETIME_FORMATTER));
 
+        List<RecordInfoItemDTO> recordInfoItemDTOList = new ArrayList<>();
+        Date tmpStart = startTime;
+        Date tmpEnd = DateUtil.offsetMinute(tmpStart,5);
+        while(DateUtil.compare(tmpStart, endTime) < 0){
+            RecordInfoItemDTO recordInfoItemDTO = new RecordInfoItemDTO();
+            recordInfoItemDTO.setName(name);
+            recordInfoItemDTO.setStartTime(tmpStart);
+            recordInfoItemDTO.setEndTime(tmpEnd);
+            recordInfoItemDTO.setSecrecy(recordInfoRequestDTO.getSecrecy());
+            recordInfoItemDTO.setDeviceId(device.getGbChannelId());
+            recordInfoItemDTOList.add(recordInfoItemDTO);
+
+            tmpStart = tmpEnd;
+            tmpEnd = DateUtil.offsetMinute(tmpStart,5);
+        }
+
         RecordInfoItemDTO recordInfoItemDTO = new RecordInfoItemDTO();
         recordInfoItemDTO.setName(name);
         recordInfoItemDTO.setStartTime(startTime);
@@ -64,19 +81,20 @@ public class RecordInfoRequestProcessor {
         recordInfoItemDTO.setSecrecy(recordInfoRequestDTO.getSecrecy());
         recordInfoItemDTO.setDeviceId(device.getGbChannelId());
 
-        List<RecordInfoItemDTO> recordInfoItemDTOList = Collections.singletonList(recordInfoItemDTO);
-        RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
-        recordInfoResponseDTO.setSn(recordInfoRequestDTO.getSn());
-        recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
-        recordInfoResponseDTO.setName(device.getName());
-        recordInfoResponseDTO.setSumNum((long) recordInfoItemDTOList.size());
-        recordInfoResponseDTO.setRecordList(recordInfoItemDTOList);
-
         FromHeader fromHeader = request.getFromHeader();
-        sender.sendRequest((provider, ip, port) -> {
-            CallIdHeader callIdHeader = provider.getNewCallId();
-            return SipRequestBuilder.createMessageRequest(device,
-                    ip, port, 1, XmlUtils.toXml(recordInfoResponseDTO), fromHeader.getTag(), callIdHeader);
+        ListUtil.partition(recordInfoItemDTOList,2).forEach(recordList->{
+            RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
+            recordInfoResponseDTO.setSn(recordInfoRequestDTO.getSn());
+            recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
+            recordInfoResponseDTO.setName(device.getName());
+            recordInfoResponseDTO.setSumNum((long) recordInfoItemDTOList.size());
+            recordInfoResponseDTO.setRecordList(recordList);
+
+            sender.sendRequest((provider, ip, port) -> {
+                CallIdHeader callIdHeader = provider.getNewCallId();
+                return SipRequestBuilder.createMessageRequest(device,
+                        ip, port, 1, XmlUtils.toXml(recordInfoResponseDTO), fromHeader.getTag(), callIdHeader);
+            });
         });
     }
 
