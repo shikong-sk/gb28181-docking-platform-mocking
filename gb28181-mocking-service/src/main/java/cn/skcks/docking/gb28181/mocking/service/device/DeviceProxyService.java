@@ -55,7 +55,7 @@ public class DeviceProxyService {
         // FFmpeg 调试日志
         //        FFmpegLogCallback.set();
         FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(fromUrl);
-        grabber.setFrameRate(30);
+        grabber.setOption("re","");
         grabber.start();
 
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(toUrl, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels());
@@ -72,6 +72,7 @@ public class DeviceProxyService {
             recorder.setAudioBitrate(grabber.getAudioBitrate());
             recorder.setAudioCodec(grabber.getAudioCodec());
         }
+        recorder.setFrameRate(grabber.getVideoFrameRate());
         recorder.setVideoBitrate(grabber.getVideoBitrate());
         //        recorder.setVideoCodec(grabber.getVideoCodec());
         recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
