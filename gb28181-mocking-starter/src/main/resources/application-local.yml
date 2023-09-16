@@ -57,7 +57,8 @@ gb28181:
     ip: 10.10.10.20
 #    ip: 192.168.10.32
 #    ip: 192.168.3.12
-    port: 5060
+#    port: 5060
+    port: 5061
     password: 123456
     domain: 4405010000
     id: 44050100002000000001
@@ -71,4 +72,10 @@ media:
   secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
 proxy:
   device:
-    url: http://192.168.2.3:18183
+    url: http://10.10.10.20:18186
+ffmpeg-support:
+  ffmpeg: D:\Soft\Captura\ffmpeg\ffmpeg.exe
+  ffprobe: D:\Soft\Captura\ffmpeg\ffprobe.exe
+  rtp:
+    input: -re -i
+    output: -vcodec copy -acodec aac -f rtp_mpegts

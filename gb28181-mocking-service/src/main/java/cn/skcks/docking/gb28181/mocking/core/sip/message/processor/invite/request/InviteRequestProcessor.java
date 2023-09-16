@@ -167,25 +167,29 @@ public class InviteRequestProcessor implements MessageProcessor {
         String senderIp = request.getLocalAddress().getHostAddress();
         SdpFactory sdpFactory = SdpFactory.getInstance();
         SessionDescriptionImpl sessionDescription = new SessionDescriptionImpl();
-        sessionDescription.setVersion(sdpFactory.createVersion(0));
+        GB28181Description description = GB28181Description.Convertor.convert(sessionDescription);
+        description.setVersion(sdpFactory.createVersion(0));
         // 目前只配置 ipv4
-        sessionDescription.setOrigin(sdpFactory.createOrigin(channelId, 0, 0, ConnectionField.IN, Connection.IP4, senderIp));
-        sessionDescription.setSessionName(gb28181Description.getSessionName());
-        sessionDescription.setConnection(sdpFactory.createConnection(ConnectionField.IN, Connection.IP4, senderIp));
+        description.setOrigin(sdpFactory.createOrigin(channelId, 0, 0, ConnectionField.IN, Connection.IP4, senderIp));
+        description.setSessionName(gb28181Description.getSessionName());
+        description.setConnection(sdpFactory.createConnection(ConnectionField.IN, Connection.IP4, senderIp));
         TimeField respTime = new TimeField();
         respTime.setZero();
         TimeDescription timeDescription = SdpFactory.getInstance().createTimeDescription(respTime);
-        sessionDescription.setTimeDescriptions(new Vector<>() {{
+        description.setTimeDescriptions(new Vector<>() {{
             add(timeDescription);
         }});
         String[] mediaTypeCodes = new String[]{"98","96"};
         MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0, SdpConstants.RTP_AVP, mediaTypeCodes);
         Arrays.stream(mediaTypeCodes).forEach((k)->{
             String v = MediaSdpHelper.RTPMAP.get(k);
-            mediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
+            respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
         });
         respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute("sendonly", null));
-        GB28181Description description = GB28181Description.Convertor.convert(sessionDescription);
+
+        description.setMediaDescriptions(new Vector<>(){{
+            add(respMediaDescription);
+        }});
         description.setSsrcField(gb28181Description.getSsrcField());
 
         String transport = request.getTopmostViaHeader().getTransport();
@@ -225,7 +229,10 @@ public class InviteRequestProcessor implements MessageProcessor {
         schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
         // 推流 ack 事件订阅
         subscribe.getAckSubscribe().addSubscribe(key, subscriber);
-        // 发送 sdp 响应
-        sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
+
+        scheduledExecutorService.schedule(()->{
+            // 发送 sdp 响应
+            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
+        }, 1,TimeUnit.SECONDS);
     }
 }

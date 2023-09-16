@@ -24,8 +24,8 @@ spring:
     username: root
     password: 123456a
     url: jdbc:mysql://192.168.1.241:3306/gb28181_docking_platform?createDatabaseIfNotExist=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-#  profiles:
-#    active: local
+  profiles:
+    active: local
 
 gb28181:
   # 作为28181服务器的配置
@@ -70,3 +70,9 @@ media:
 proxy:
   device:
     url: http://192.168.2.3:18183
+ffmpeg-support:
+  ffmpeg: /usr/bin/ffmpeg
+  ffprobe: /usr/bin/ffprobe
+  rtp:
+    input: -re -i
+    output: -vcodec h264 -acodec aac -f rtp_mpegts

@@ -15,6 +15,7 @@ import javax.sip.SipFactory;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
 import javax.sip.header.ContentTypeHeader;
+import javax.sip.header.MaxForwardsHeader;
 import javax.sip.message.Response;
 
 @Slf4j
@@ -42,11 +43,13 @@ public class SipResponseBuilder {
         messageFactory.setDefaultContentEncodingCharset(GB28181Constant.CHARSET);
         SIPResponse response = (SIPResponse)messageFactory.createResponse(Response.OK, request);
         SipFactory sipFactory = SipFactory.getInstance();
-        ContentTypeHeader contentTypeHeader = sipFactory.createHeaderFactory().createContentTypeHeader("APPLICATION", "SDP");
+        ContentTypeHeader contentTypeHeader = sipFactory.createHeaderFactory().createContentTypeHeader("application", "sdp");
         response.setContent(sdp.toString(), contentTypeHeader);
         SipURI sipURI = (SipURI) request.getRequestURI();
         SipURI uri = MessageHelper.createSipURI(sipURI.getUser(), StringUtils.joinWith(":", sipURI.getHost() + ":" + sipURI.getPort()));
         Address concatAddress = sipFactory.createAddressFactory().createAddress(uri);
+        MaxForwardsHeader maxForwardsHeader = MessageHelper.createMaxForwardsHeader(70);
+        response.setMaxForwards(maxForwardsHeader);
         response.addHeader(sipFactory.createHeaderFactory().createContactHeader(concatAddress));
         return response;
     }
