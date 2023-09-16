@@ -49,5 +49,6 @@ public class KeepaliveService {
         if(scheduledFuture != null){
             scheduledFuture.cancel(true);
         }
+        map.remove(mockingDevice.getDeviceCode());
     }
 }
