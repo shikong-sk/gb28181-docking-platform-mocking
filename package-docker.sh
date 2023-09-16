@@ -4,9 +4,9 @@ mkdir repository
 curDir=`pwd`
 if ! test -e ${curDir}/ffmpeg/ffmpeg;then
   xz -d ${curDir}/ffmpeg/ffmpeg-git-amd64-static.tar.xz
-  tar -xvf ${curDir}/ffmpeg-git-amd64-static.tar -C ${curDir}/ffmpeg/
-  mv ${curDir}/ffmpeg-git*-static/* ${curDir}/ffmpeg
-  rm -rf ${curDir}/ffmpeg-git*-static
+  tar -xvf ${curDir}/ffmpeg/ffmpeg-git-amd64-static.tar -C ${curDir}/ffmpeg/
+  mv ${curDir}/ffmpeg/ffmpeg-git*-static/* ${curDir}/ffmpeg
+  rm -rf ${curDir}/ffmpeg/ffmpeg-git*-static
 fi
 
 docker run --name maven --rm \
