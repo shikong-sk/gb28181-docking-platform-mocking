@@ -25,6 +25,24 @@ public class FfmpegSupportService {
         String outputParam = StringUtils.joinWith(" ", rtp.getOutput(), output);
         log.info("视频输出参数 {}", outputParam);
 
+        return ffmpegExecutor(inputParam, outputParam, time, unit);
+    }
+
+    @SneakyThrows
+    public Executor pushDownload2Rtp(String input, String output, long time, TimeUnit unit){
+        FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
+        String inputParam = StringUtils.joinWith(" ", rtp.getDownload(), input);
+        log.info("视频下载参数 {}", inputParam);
+
+        String outputParam = StringUtils.joinWith(" ", rtp.getOutput(), output);
+        log.info("视频输出参数 {}", outputParam);
+
+        return ffmpegExecutor(inputParam, outputParam, time, unit);
+    }
+
+    @SneakyThrows
+    public Executor ffmpegExecutor(String inputParam,String outputParam, long time, TimeUnit unit){
+        FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         String logLevelParam = StringUtils.joinWith(" ","-loglevel", rtp.getLogLevel());
         String command = StringUtils.joinWith(" ", ffmpegConfig.getFfmpeg(), inputParam, outputParam, logLevelParam);
         CommandLine commandLine = CommandLine.parse(command);

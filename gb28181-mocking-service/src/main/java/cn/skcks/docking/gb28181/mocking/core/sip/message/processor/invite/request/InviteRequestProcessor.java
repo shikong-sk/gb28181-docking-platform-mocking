@@ -101,6 +101,7 @@ public class InviteRequestProcessor implements MessageProcessor {
                     }
                 } else if (StringUtils.equalsIgnoreCase(type, "Download")) {
                     log.info("下载请求");
+                    download(request, device, gb28181Description, (MediaDescription) item);
                 } else {
                     log.error("未知请求类型: {}", type);
                     sender.sendResponse(senderIp, transport, unsupported(request));
@@ -153,6 +154,18 @@ public class InviteRequestProcessor implements MessageProcessor {
 
     @SneakyThrows
     private void playback(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time) {
+        playback(request, device, gb28181Description, mediaDescription, time, false);
+    }
+
+    @SneakyThrows
+    private void download(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
+        TimeDescriptionImpl timeDescription = (TimeDescriptionImpl) gb28181Description.getTimeDescriptions(true).get(0);
+        TimeField time = (TimeField) timeDescription.getTime();
+        playback(request, device, gb28181Description, mediaDescription, time, true);
+    }
+
+    @SneakyThrows
+    private void playback(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time, boolean isDownload) {
         Date start = new Date(time.getStartTime() * 1000);
         Date stop = new Date(time.getStopTime() * 1000);
         log.info("{} ~ {}", start, stop);
@@ -199,7 +212,25 @@ public class InviteRequestProcessor implements MessageProcessor {
         subscribe.getAckSubscribe().addPublisher(key);
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         final ScheduledFuture<?>[] schedule = new ScheduledFuture<?>[1];
-        Flow.Subscriber<SIPRequest> subscriber = new Flow.Subscriber<>() {
+        Flow.Subscriber<SIPRequest> subscriber;
+        if(!isDownload){
+            subscriber = placbackSubscriber(callId,device,start,stop,address,port,key,schedule);
+        } else {
+            subscriber = downloadSubscriber(callId,device,start,stop,address,port,key,schedule);
+        }
+        // 60秒超时计时器
+        schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
+        // 推流 ack 事件订阅
+        subscribe.getAckSubscribe().addSubscribe(key, subscriber);
+
+        scheduledExecutorService.schedule(()->{
+            // 发送 sdp 响应
+            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
+        }, 1,TimeUnit.SECONDS);
+    }
+
+    public Flow.Subscriber<SIPRequest> placbackSubscriber(String callId,MockingDevice device,Date start,Date stop,String address,int port,String key,ScheduledFuture<?>[] scheduledFuture){
+        return new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
                 log.info("创建 ack 订阅 {}", key);
@@ -210,7 +241,7 @@ public class InviteRequestProcessor implements MessageProcessor {
             public void onNext(SIPRequest item) {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
-                deviceProxyService.proxyVideo2Rtp(callId, device, start, stop, address, port);
+                deviceProxyService.proxyVideo2Rtp(callId, device, start, stop, address, port, deviceProxyService.playbackTask());
                 onComplete();
             }
 
@@ -222,17 +253,37 @@ public class InviteRequestProcessor implements MessageProcessor {
             @Override
             public void onComplete() {
                 subscribe.getAckSubscribe().delPublisher(key);
-                schedule[0].cancel(true);
+                scheduledFuture[0].cancel(true);
             }
         };
-        // 60秒超时计时器
-        schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
-        // 推流 ack 事件订阅
-        subscribe.getAckSubscribe().addSubscribe(key, subscriber);
+    }
 
-        scheduledExecutorService.schedule(()->{
-            // 发送 sdp 响应
-            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
-        }, 1,TimeUnit.SECONDS);
+    public Flow.Subscriber<SIPRequest> downloadSubscriber(String callId,MockingDevice device,Date start,Date stop,String address,int port,String key,ScheduledFuture<?>[] scheduledFuture){
+        return new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                log.info("创建 ack 订阅 {}", key);
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(SIPRequest item) {
+                log.info("收到 ack 确认请求: {} 开始推流",key);
+                // RTP 推流
+                deviceProxyService.proxyVideo2Rtp(callId, device, start, stop, address, port, deviceProxyService.downloadTask());
+                onComplete();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+
+            }
+
+            @Override
+            public void onComplete() {
+                subscribe.getAckSubscribe().delPublisher(key);
+                scheduledFuture[0].cancel(true);
+            }
+        };
     }
 }

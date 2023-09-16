@@ -78,4 +78,4 @@ ffmpeg-support:
   ffprobe: D:\Soft\Captura\ffmpeg\ffprobe.exe
   rtp:
     input: -re -i
-    output: -vcodec copy -acodec aac -f rtp_mpegts
+    output: -vcodec h264 -acodec aac -f rtp_mpegts
