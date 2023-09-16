@@ -45,3 +45,28 @@ docker run --name gb28181-mocking --rm \
 mvn deploy -DaltDeploymentRepository=amleixun-mvn-reop::default::file:H:/Repository/skcks.cn/gb28181-docking-platform-mvn-repo
 ```
 git push 推送即可
+
+### 关于外置 ffmpeg 部分
+项目仓库中自带一个 linux amd64 ffmpeg 用于docker打包
+
+如果有其他平台需要可 修改位于 gb28181-mocking-starter 的 Dockerfile 文件
+
+#### linux
+linux 各发行版本可使用对应 官方源 安装
+或者根据不同平台使用 https://www.johnvansickle.com/ffmpeg/ 提供的免编译版本
+例:
+
+amd64: https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz
+
+arm64: https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-arm64-static.tar.xz
+
+#### windows
+可到 ffmpeg.org 官网查找
+
+或 到 github https://github.com/BtbN/FFmpeg-Builds/releases
+
+下载对应版本
+
+例:
+
+win64: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip

@@ -2,6 +2,13 @@
 # 用于缓存打包过程下载的依赖
 mkdir repository
 curDir=`pwd`
+  if ! test -e ffmpeg/ffmpeg;then
+  xz -d ffmpeg/ffmpeg-git-amd64-static.tar.xz
+  tar -xvf ffmpeg-git-amd64-static.tar -C ./
+  mv ffmpeg-git*-static/* ./
+  rm -rf ffmpeg-git*-static
+fi
+
 docker run --name maven --rm \
 	-v ${curDir}:/usr/src/mymaven \
 	-v ${curDir}/repository:/root/.m2/repository \
