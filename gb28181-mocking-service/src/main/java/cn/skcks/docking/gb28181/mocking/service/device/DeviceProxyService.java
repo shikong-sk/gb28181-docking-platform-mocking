@@ -99,6 +99,6 @@ public class DeviceProxyService {
 
     @SneakyThrows
     public Executor pushRtpTask(String fromUrl, String toUrl, long time){
-        return ffmpegSupportService.pushToRtp("http://10.10.10.200:5080/live/test.live.flv", toUrl, time, TimeUnit.SECONDS);
+        return ffmpegSupportService.pushToRtp(fromUrl, toUrl, time, TimeUnit.SECONDS);
     }
 }
