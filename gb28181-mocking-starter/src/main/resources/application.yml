@@ -71,8 +71,8 @@ proxy:
   device:
     url: http://192.168.2.3:18183
 ffmpeg-support:
-  ffmpeg: /usr/bin/ffmpeg
-  ffprobe: /usr/bin/ffprobe
+  ffmpeg: /usr/bin/ffmpeg/ffmpeg
+  ffprobe: /usr/bin/ffmpeg/ffprobe
   rtp:
     input: -re -i
     output: -vcodec h264 -acodec aac -f rtp_mpegts
