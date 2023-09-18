@@ -74,16 +74,6 @@ public class DeviceProxyService {
         return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time)->{
             Optional.ofNullable(downloadTask.get(device.getDeviceCode())).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
-                log.info("{} 推流结束, 发送媒体通知", key);
-                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                        .deviceId(device.getGbChannelId())
-                        .build();
-
-                String tag = request.getFromHeader().getTag();
-                CallIdHeader requestCallId = request.getCallId();
-                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
@@ -121,7 +111,7 @@ public class DeviceProxyService {
                 Optional.ofNullable(task.get(device.getDeviceCode())).ifPresent(task -> {
                     task.getWatchdog().destroyProcess();
                 });
-                downloadTask.remove(device.getDeviceCode());
+                task.remove(device.getDeviceCode());
             }
         };
     }
