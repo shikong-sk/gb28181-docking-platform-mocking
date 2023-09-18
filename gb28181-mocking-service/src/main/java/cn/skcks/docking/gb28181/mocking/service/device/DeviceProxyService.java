@@ -5,10 +5,14 @@ import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.URLUtil;
+import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
+import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
+import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
@@ -21,6 +25,7 @@ import org.apache.commons.exec.Executor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 import java.nio.charset.StandardCharsets;
@@ -48,13 +53,23 @@ public class DeviceProxyService {
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public interface TaskProcessor {
-        void process(String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time);
+        void process(SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time);
     }
 
     public TaskProcessor playbackTask(){
-        return (String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time) -> {
+        return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time) -> {
             Optional.ofNullable(callbackTask.get(device.getDeviceCode())).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
+                log.info("{} 推流结束, 发送媒体通知", key);
+                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
+                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
+                        .deviceId(device.getGbChannelId())
+                        .build();
+
+                String tag = request.getFromHeader().getTag();
+                CallIdHeader requestCallId = request.getCallId();
+                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
+                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
@@ -64,9 +79,19 @@ public class DeviceProxyService {
     }
 
     public TaskProcessor downloadTask(){
-        return (String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time)->{
+        return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time)->{
             Optional.ofNullable(downloadTask.get(device.getDeviceCode())).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
+                log.info("{} 推流结束, 发送媒体通知", key);
+                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
+                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
+                        .deviceId(device.getGbChannelId())
+                        .build();
+
+                String tag = request.getFromHeader().getTag();
+                CallIdHeader requestCallId = request.getCallId();
+                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
+                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
@@ -109,13 +134,13 @@ public class DeviceProxyService {
         };
     }
 
-    public synchronized void proxyVideo2Rtp(String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, TaskProcessor taskProcessor) {
+    public synchronized void proxyVideo2Rtp(SIPRequest request,String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, TaskProcessor taskProcessor) {
         String fromUrl = URLUtil.completeUrl(proxyConfig.getUrl(), "/video");
         HashMap<String, String> map = new HashMap<>(3);
         String deviceCode = device.getDeviceCode();
         map.put("device_id", deviceCode);
-        map.put("begin_time",DateUtil.format(LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN));
-        map.put("end_time", DateUtil.format(LocalDateTimeUtil.of(endTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN));
+        map.put("begin_time",DateUtil.format(LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN) );
+        map.put("end_time", DateUtil.format(endTime, DatePattern.PURE_DATETIME_FORMAT));
         String query = URLUtil.buildQuery(map, StandardCharsets.UTF_8);
         fromUrl = StringUtils.joinWith("?", fromUrl, query);
         log.info("设备: {} 视频 url: {}", deviceCode, fromUrl);
@@ -124,7 +149,7 @@ public class DeviceProxyService {
 
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         subscribe.getByeSubscribe().addPublisher(key);
-        taskProcessor.process(callId,fromUrl,toUrl,device,key,time);
+        taskProcessor.process(request, callId,fromUrl,toUrl,device,key,time);
     }
 
     @SneakyThrows
