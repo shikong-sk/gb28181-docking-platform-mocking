@@ -132,7 +132,7 @@ public class DeviceProxyService {
         String deviceCode = device.getDeviceCode();
         map.put("device_id", deviceCode);
         map.put("begin_time",DateUtil.format(LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN) );
-        map.put("end_time", DateUtil.format(endTime, DatePattern.PURE_DATETIME_FORMAT));
+        map.put("end_time", DateUtil.format(LocalDateTimeUtil.of(endTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN));
         String query = URLUtil.buildQuery(map, StandardCharsets.UTF_8);
         fromUrl = StringUtils.joinWith("?", fromUrl, query);
         log.info("设备: {} 视频 url: {}", deviceCode, fromUrl);
