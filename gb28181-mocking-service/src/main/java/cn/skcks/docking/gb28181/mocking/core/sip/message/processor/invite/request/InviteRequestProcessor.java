@@ -1,7 +1,6 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.request;
 
 import cn.hutool.core.date.DateUtil;
-import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
@@ -32,7 +31,6 @@ import javax.sdp.*;
 import javax.sip.RequestEvent;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.EventObject;
@@ -168,8 +166,8 @@ public class InviteRequestProcessor implements MessageProcessor {
 
     @SneakyThrows
     private void playback(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription, TimeField time, boolean isDownload) {
-        Date start = DateUtil.convertTimeZone(new Date(time.getStartTime() * 1000), ZoneId.of(GB28181Constant.TIME_ZONE));
-        Date stop = DateUtil.convertTimeZone(new Date(time.getStopTime() * 1000), ZoneId.of(GB28181Constant.TIME_ZONE));
+        Date start = new Date(time.getStartTime() * 1000);
+        Date stop = new Date(time.getStopTime() * 1000);
         log.info("{} ~ {}", start, stop);
         String channelId = gb28181Description.getOrigin().getUsername();
         log.info("通道id: {}", channelId);
