@@ -21,6 +21,8 @@ import gov.nist.javax.sip.message.SIPRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.ExecuteResultHandler;
 import org.apache.commons.exec.Executor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -60,20 +62,10 @@ public class DeviceProxyService {
         return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time) -> {
             Optional.ofNullable(callbackTask.get(device.getDeviceCode())).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
-                log.info("{} 推流结束, 发送媒体通知", key);
-                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                        .deviceId(device.getGbChannelId())
-                        .build();
-
-                String tag = request.getFromHeader().getTag();
-                CallIdHeader requestCallId = request.getCallId();
-                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            callbackTask.put(device.getDeviceCode(), pushRtpTask( fromUrl,  toUrl,  time + 60));
+            callbackTask.put(device.getDeviceCode(), pushRtpTask(fromUrl,  toUrl,  time + 60));
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
         };
     }
@@ -95,7 +87,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            downloadTask.put(device.getDeviceCode(), pushDownload2RtpTask( fromUrl,  toUrl,  time + 60));
+            downloadTask.put(device.getDeviceCode(), pushDownload2RtpTask( fromUrl,  toUrl,  time + 60, mediaStatus(request,device,key)));
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
         };
     }
@@ -153,12 +145,39 @@ public class DeviceProxyService {
     }
 
     @SneakyThrows
-    public Executor pushRtpTask(String fromUrl, String toUrl, long time){
-        return ffmpegSupportService.pushToRtp(fromUrl, toUrl, time, TimeUnit.SECONDS);
+    public Executor pushRtpTask(String fromUrl, String toUrl, long time, ExecuteResultHandler resultHandler) {
+        return ffmpegSupportService.pushToRtp(fromUrl, toUrl, time, TimeUnit.SECONDS, resultHandler);
     }
 
     @SneakyThrows
-    public Executor pushDownload2RtpTask(String fromUrl, String toUrl, long time){
-        return ffmpegSupportService.pushDownload2Rtp(fromUrl, toUrl, time, TimeUnit.SECONDS);
+    public Executor pushDownload2RtpTask(String fromUrl, String toUrl, long time, ExecuteResultHandler resultHandler) {
+        return ffmpegSupportService.pushDownload2Rtp(fromUrl, toUrl, time, TimeUnit.SECONDS, resultHandler);
+    }
+
+    public ExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
+        return new ExecuteResultHandler() {
+            private void mediaStatus(){
+                log.info("{} 推流结束, 发送媒体通知", key);
+                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
+                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
+                        .deviceId(device.getGbChannelId())
+                        .build();
+
+                String tag = request.getFromHeader().getTag();
+                CallIdHeader requestCallId = request.getCallId();
+                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
+                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
+            }
+
+            @Override
+            public void onProcessComplete(int exitValue) {
+                mediaStatus();
+            }
+
+            @Override
+            public void onProcessFailed(ExecuteException e) {
+                mediaStatus();
+            }
+        };
     }
 }

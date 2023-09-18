@@ -1,17 +1,13 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.request;
 
 import cn.hutool.core.date.DateUtil;
-import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
-import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
-import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
-import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
@@ -33,7 +29,6 @@ import org.springframework.stereotype.Component;
 
 import javax.sdp.*;
 import javax.sip.RequestEvent;
-import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 import java.util.Arrays;
@@ -247,17 +242,6 @@ public class InviteRequestProcessor implements MessageProcessor {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
                 deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, deviceProxyService.playbackTask());
-
-                log.info("{} 推流结束, 发送媒体通知", key);
-                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                        .deviceId(device.getGbChannelId())
-                        .build();
-
-                String tag = request.getFromHeader().getTag();
-                CallIdHeader requestCallId = request.getCallId();
-                sender.sendRequest(((provider, ip, port1) -> SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
                 onComplete();
             }
 
@@ -288,16 +272,6 @@ public class InviteRequestProcessor implements MessageProcessor {
                 // RTP 推流
                 deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, deviceProxyService.downloadTask());
 
-                log.info("{} 推流结束, 发送媒体通知", key);
-                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                        .deviceId(device.getGbChannelId())
-                        .build();
-
-                String tag = request.getFromHeader().getTag();
-                CallIdHeader requestCallId = request.getCallId();
-                sender.sendRequest(((provider, ip, port1) -> SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
                 onComplete();
             }
 
