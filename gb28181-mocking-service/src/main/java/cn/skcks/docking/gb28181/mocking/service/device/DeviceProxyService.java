@@ -65,7 +65,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            callbackTask.put(device.getDeviceCode(), pushRtpTask(fromUrl,  toUrl,  time + 60));
+            callbackTask.put(device.getDeviceCode(), pushRtpTask(fromUrl,  toUrl,  time + 60, mediaStatus(request, device, key)));
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
         };
     }
