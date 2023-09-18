@@ -60,7 +60,7 @@ public class DeviceProxyService {
 
     public TaskProcessor playbackTask(){
         return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time) -> {
-            Optional.ofNullable(callbackTask.get(device.getDeviceCode())).ifPresent(task->{
+            Optional.ofNullable(callbackTask.get(callId)).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
@@ -72,7 +72,7 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (SIPRequest request,String callId,String fromUrl, String toUrl, MockingDevice device, String key, long time)->{
-            Optional.ofNullable(downloadTask.get(device.getDeviceCode())).ifPresent(task->{
+            Optional.ofNullable(downloadTask.get(callId)).ifPresent(task->{
                 task.getWatchdog().destroyProcess();
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
@@ -147,6 +147,9 @@ public class DeviceProxyService {
     public ExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
         return new ExecuteResultHandler() {
             private void mediaStatus(){
+                CallIdHeader requestCallId = request.getCallId();
+                String callId = requestCallId.getCallId();
+                callbackTask.remove(callId);
                 log.info("{} 推流结束, 发送媒体通知", key);
                 MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
                         .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
@@ -154,7 +157,6 @@ public class DeviceProxyService {
                         .build();
 
                 String tag = request.getFromHeader().getTag();
-                CallIdHeader requestCallId = request.getCallId();
                 sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
                         ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
             }
