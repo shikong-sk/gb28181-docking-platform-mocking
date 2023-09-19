@@ -20,4 +20,21 @@ public class FfmpegConfig {
         private String output = "-vcodec h264 -acodec aac -f rtp_mpegts";
         private String logLevel = "fatal";
     }
+
+
+    private Debug debug;
+
+    @Data
+    public static class Debug {
+        private Boolean download = false;
+        private Boolean input = false;
+        private Boolean output = false;
+    }
+
+    private Task task;
+
+    @Data
+    public static class Task {
+        private Integer max = 4;
+    }
 }

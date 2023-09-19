@@ -71,9 +71,16 @@ proxy:
   device:
     url: http://192.168.2.3:18183
 ffmpeg-support:
+  task:
+    # 最大同时推流任务数, <= 0 时不做限制
+    max: 4
   ffmpeg: /usr/bin/ffmpeg/ffmpeg
   ffprobe: /usr/bin/ffmpeg/ffprobe
   rtp:
     download: -i
     input: -re -i
     output: -vcodec h264 -acodec aac -f rtp_mpegts
+  debug:
+    download: false
+    input: false
+    output: false

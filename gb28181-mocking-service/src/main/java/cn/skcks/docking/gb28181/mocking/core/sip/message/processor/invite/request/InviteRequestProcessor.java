@@ -6,6 +6,7 @@ import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
+import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
@@ -50,6 +51,8 @@ public class InviteRequestProcessor implements MessageProcessor {
     private final DeviceService deviceService;
 
     private final SipSubscribe subscribe;
+
+    private final FfmpegConfig ffmpegConfig;
 
     @PostConstruct
     @Override
@@ -178,6 +181,16 @@ public class InviteRequestProcessor implements MessageProcessor {
         log.info("目标端口号: {}", port);
 
         String senderIp = request.getLocalAddress().getHostAddress();
+        String transport = request.getTopmostViaHeader().getTransport();
+        int taskNum = deviceProxyService.getTaskNum().get();
+        log.info("当前任务数 {}", taskNum);
+        if(ffmpegConfig.getTask().getMax() > 0 && taskNum >= ffmpegConfig.getTask().getMax()){
+            log.warn("任务数过多 性能受限, 返回 486");
+            // 发送 sdp 响应
+            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.response(request, Response.BUSY_HERE, "BUSY_HERE"));
+            return;
+        }
+
         SdpFactory sdpFactory = SdpFactory.getInstance();
         SessionDescriptionImpl sessionDescription = new SessionDescriptionImpl();
         GB28181Description description = GB28181Description.Convertor.convert(sessionDescription);
@@ -204,8 +217,6 @@ public class InviteRequestProcessor implements MessageProcessor {
             add(respMediaDescription);
         }});
         description.setSsrcField(gb28181Description.getSsrcField());
-
-        String transport = request.getTopmostViaHeader().getTransport();
 
         String callId = request.getCallId().getCallId();
         String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);

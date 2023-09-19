@@ -74,8 +74,16 @@ proxy:
   device:
     url: http://10.10.10.20:18186
 ffmpeg-support:
+  task:
+    # 最大同时推流任务数, <= 0 时不做限制
+    max: 4
   ffmpeg: D:\Soft\Captura\ffmpeg\ffmpeg.exe
   ffprobe: D:\Soft\Captura\ffmpeg\ffprobe.exe
   rtp:
-    input: -re -i
-    output: -vcodec h264 -acodec aac -f rtp_mpegts
+    input: -re -i http://10.10.10.200:5080/live/test.live.flv
+#    input: -re -i
+    output: -vcodec h264 -acodec aac -f rtp_mpegts # -rtsp_transport tcp
+  debug:
+    download: false
+    input: true
+    output: false

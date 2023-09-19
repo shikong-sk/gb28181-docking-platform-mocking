@@ -19,10 +19,11 @@ public class FfmpegSupportService {
     @SneakyThrows
     public Executor pushToRtp(String input, String output, long time, TimeUnit unit,ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
-        String inputParam = StringUtils.joinWith(" ", rtp.getInput(), input);
+        FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
+        String inputParam = debug.getInput() ? rtp.getInput() : StringUtils.joinWith(" ", rtp.getInput(), input);
         log.info("视频输入参数 {}", inputParam);
 
-        String outputParam = StringUtils.joinWith(" ", rtp.getOutput(), output);
+        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);
         log.info("视频输出参数 {}", outputParam);
 
         return ffmpegExecutor(inputParam, outputParam, time, unit, resultHandler);
@@ -31,10 +32,11 @@ public class FfmpegSupportService {
     @SneakyThrows
     public Executor pushDownload2Rtp(String input, String output, long time, TimeUnit unit, ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
-        String inputParam = StringUtils.joinWith(" ", rtp.getDownload(), input);
+        FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
+        String inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input);
         log.info("视频下载参数 {}", inputParam);
 
-        String outputParam = StringUtils.joinWith(" ", rtp.getOutput(), output);
+        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);
         log.info("视频输出参数 {}", outputParam);
 
         return ffmpegExecutor(inputParam, outputParam, time, unit, resultHandler);

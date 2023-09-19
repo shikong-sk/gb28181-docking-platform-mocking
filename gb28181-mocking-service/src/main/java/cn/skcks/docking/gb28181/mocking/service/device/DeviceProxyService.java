@@ -18,6 +18,8 @@ import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import gov.nist.javax.sip.message.SIPRequest;
+import jakarta.annotation.PreDestroy;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -47,6 +50,9 @@ public class DeviceProxyService {
 
     private final ConcurrentHashMap<String, Executor> callbackTask = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Executor> downloadTask = new ConcurrentHashMap<>();
+
+    @Getter
+    private final AtomicInteger taskNum = new AtomicInteger(0);
 
     private final SipSender sender;
 
@@ -65,6 +71,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
+            taskNum.getAndIncrement();
             callbackTask.put(device.getDeviceCode(), pushRtpTask(fromUrl,  toUrl,  time + 60, mediaStatus(request, device, key)));
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
         };
@@ -77,6 +84,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
+            taskNum.getAndIncrement();
             downloadTask.put(device.getDeviceCode(), pushDownload2RtpTask( fromUrl,  toUrl,  time + 60, mediaStatus(request,device,key)));
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
         };
@@ -116,7 +124,7 @@ public class DeviceProxyService {
         };
     }
 
-    public synchronized void proxyVideo2Rtp(SIPRequest request,String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, TaskProcessor taskProcessor) {
+    public void proxyVideo2Rtp(SIPRequest request,String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, TaskProcessor taskProcessor) {
         String fromUrl = URLUtil.completeUrl(proxyConfig.getUrl(), "/video");
         HashMap<String, String> map = new HashMap<>(3);
         String deviceCode = device.getDeviceCode();
@@ -147,6 +155,7 @@ public class DeviceProxyService {
     public ExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
         return new ExecuteResultHandler() {
             private void mediaStatus(){
+                taskNum.getAndDecrement();
                 CallIdHeader requestCallId = request.getCallId();
                 String callId = requestCallId.getCallId();
                 callbackTask.remove(callId);
@@ -171,5 +180,14 @@ public class DeviceProxyService {
                 mediaStatus();
             }
         };
+    }
+
+    /**
+     * 程序退出时全部销毁
+     */
+    @PreDestroy
+    private void destroy(){
+        callbackTask.values().parallelStream().forEach(executor -> executor.getWatchdog().destroyProcess());
+        downloadTask.values().parallelStream().forEach(executor -> executor.getWatchdog().destroyProcess());
     }
 }
