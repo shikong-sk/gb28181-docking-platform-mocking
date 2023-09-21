@@ -29,7 +29,7 @@ public class SipSubscribe {
     private void init() {
         registerSubscribe = new RegisterSubscribe(executor);
         ackSubscribe = new AckSubscribe(executor);
-        byeSubscribe = new AckSubscribe(executor);
+        byeSubscribe = new ByeSubscribe(executor);
     }
 
     @PreDestroy
