@@ -81,7 +81,7 @@ public class RegisterService {
     @SneakyThrows
     public CompletableFuture<JsonResponse<Void>> register(MockingDevice device) {
         keepaliveService.unKeepalive(device);
-        CompletableFuture<JsonResponse<Boolean>> result = new CompletableFuture<>();
+        CompletableFuture<JsonResponse<Void>> result = new CompletableFuture<>();
         if(!device.getEnable()){
             result.complete(JsonResponse.success(null));
         }
