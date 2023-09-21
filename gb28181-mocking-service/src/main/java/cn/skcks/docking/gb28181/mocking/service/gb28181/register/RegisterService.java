@@ -84,6 +84,7 @@ public class RegisterService {
         CompletableFuture<JsonResponse<Void>> result = new CompletableFuture<>();
         if(!device.getEnable()){
             result.complete(JsonResponse.success(null));
+            return result;
         }
         sender.sendRequest((provider, ip, port) -> {
             CallIdHeader callIdHeader = provider.getNewCallId();
