@@ -52,20 +52,19 @@ public class RegisterService {
 
         List<MockingDevice> allDevice = deviceService.getAllDevice();
 
-
-        List<CompletableFuture<JsonResponse<Boolean>>[]> completableFutures = ListUtil.split(allDevice, 10).stream().map(items -> {
-            CompletableFuture<JsonResponse<Boolean>>[] array = allDevice.stream().map(this::register).toArray(CompletableFuture[]::new);
+        List<CompletableFuture<JsonResponse<Void>>[]> completableFutures = ListUtil.split(allDevice, 10).stream().map(items -> {
+            CompletableFuture<JsonResponse<Void>>[] array = allDevice.stream().map(this::register).toArray(CompletableFuture[]::new);
             CompletableFuture.allOf(array);
             return array;
         }).toList();
 
-        List<CompletableFuture<JsonResponse<Boolean>>> reduce = completableFutures.stream().map(item -> Arrays.stream(item).toList())
+        List<CompletableFuture<JsonResponse<Void>>> reduce = completableFutures.stream().map(item -> Arrays.stream(item).toList())
                 .reduce(new ArrayList<>(), (prev, cur) -> {
                     prev.addAll(cur);
                     return prev;
                 });
 
-        Optional<JsonResponse<Boolean>> first = reduce.stream().map(item -> {
+        Optional<JsonResponse<Void>> first = reduce.stream().map(item -> {
             try {
                 return item.get();
             } catch (InterruptedException | ExecutionException e) {
@@ -80,10 +79,12 @@ public class RegisterService {
     }
 
     @SneakyThrows
-    public CompletableFuture<JsonResponse<Boolean>> register(MockingDevice device) {
+    public CompletableFuture<JsonResponse<Void>> register(MockingDevice device) {
         keepaliveService.unKeepalive(device);
-
         CompletableFuture<JsonResponse<Boolean>> result = new CompletableFuture<>();
+        if(!device.getEnable()){
+            result.complete(JsonResponse.success(null));
+        }
         sender.sendRequest((provider, ip, port) -> {
             CallIdHeader callIdHeader = provider.getNewCallId();
             String callId = callIdHeader.getCallId();

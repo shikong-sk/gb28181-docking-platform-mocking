@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mybatis.dynamic.sql.SqlBuilder.isEqualTo;
+import static org.mybatis.dynamic.sql.SqlBuilder.isTrue;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -133,6 +134,11 @@ public class DeviceService {
 
     public List<MockingDevice> getAllDevice(){
        return deviceMapper.select(u -> u.orderBy(MockingDeviceDynamicSqlSupport.id.descending()));
+    }
+
+    public List<MockingDevice> getAllEnabledDevice(){
+        return deviceMapper.select(u -> u.where(MockingDeviceDynamicSqlSupport.enable,isTrue())
+                .orderBy(MockingDeviceDynamicSqlSupport.id.descending()));
     }
 
     /**
