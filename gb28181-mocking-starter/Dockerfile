@@ -3,6 +3,7 @@ FROM eclipse-temurin:17-jre-focal
 MAINTAINER Shikong <919411476@qq.com>
 
 ENV HOME_PATH /opt/gb28181-docking-platform-mocking/
+ENV TZ Asia/Shanghai
 RUN mkdir -p $HOME_PATH
 WORKDIR $HOME_PATH
 
