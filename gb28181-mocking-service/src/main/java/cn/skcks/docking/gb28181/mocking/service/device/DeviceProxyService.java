@@ -19,10 +19,9 @@ import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PreDestroy;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteResultHandler;
 import org.apache.commons.exec.Executor;
@@ -48,11 +47,11 @@ public class DeviceProxyService {
 
     private final SipSubscribe subscribe;
 
-    private final ConcurrentHashMap<String, Executor> callbackTask = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Executor> callbackTask = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Executor> downloadTask = new ConcurrentHashMap<>();
 
     @Getter
-    private final AtomicInteger taskNum = new AtomicInteger(0);
+    private static final AtomicInteger taskNum = new AtomicInteger(0);
 
     private final SipSender sender;
 
@@ -72,8 +71,11 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             taskNum.getAndIncrement();
-            callbackTask.put(device.getDeviceCode(), pushRtpTask(fromUrl,  toUrl,  time + 60, mediaStatus(request, device, key)));
+            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+            Executor executor = pushRtpTask(fromUrl, toUrl, time + 60, executeResultHandler);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+            callbackTask.put(device.getDeviceCode(), executor);
+            executeResultHandler.waitFor();
         };
     }
 
@@ -85,8 +87,11 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             taskNum.getAndIncrement();
-            downloadTask.put(device.getDeviceCode(), pushDownload2RtpTask( fromUrl,  toUrl,  time + 60, mediaStatus(request,device,key)));
+            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+            Executor executor = pushDownload2RtpTask(fromUrl, toUrl, time + 60, executeResultHandler);
+            downloadTask.put(device.getDeviceCode(), executor);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+            executeResultHandler.waitFor();
         };
     }
 
@@ -152,34 +157,59 @@ public class DeviceProxyService {
         return ffmpegSupportService.pushDownload2Rtp(fromUrl, toUrl, time, TimeUnit.SECONDS, resultHandler);
     }
 
-    public ExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
-        return new ExecuteResultHandler() {
-            private void mediaStatus(){
-                taskNum.getAndDecrement();
-                CallIdHeader requestCallId = request.getCallId();
-                String callId = requestCallId.getCallId();
-                callbackTask.remove(callId);
-                log.info("{} 推流结束, 发送媒体通知", key);
-                MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                        .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                        .deviceId(device.getGbChannelId())
-                        .build();
+    @RequiredArgsConstructor
+    public static class FfmpegExecuteResultHandler implements ExecuteResultHandler {
+        private final static long SLEEP_TIME_MS = 50;
+        @Setter(AccessLevel.PRIVATE)
+        private boolean hasResult = false;
 
-                String tag = request.getFromHeader().getTag();
-                sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
-            }
+        private final SIPRequest request;
+        private final MockingDevice device;
+        private final String key;
+        private final SipSender sender;
 
-            @Override
-            public void onProcessComplete(int exitValue) {
-                mediaStatus();
-            }
+        private void mediaStatus(){
+            taskNum.getAndDecrement();
+            CallIdHeader requestCallId = request.getCallId();
+            String callId = requestCallId.getCallId();
+            callbackTask.remove(callId);
+            log.info("{} 推流结束, 发送媒体通知", key);
+            MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
+                    .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
+                    .deviceId(device.getGbChannelId())
+                    .build();
 
-            @Override
-            public void onProcessFailed(ExecuteException e) {
-                mediaStatus();
+            String tag = request.getFromHeader().getTag();
+            sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
+                    ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
+        }
+
+        public boolean hasResult() {
+            return hasResult;
+        }
+
+        @SneakyThrows
+        public void waitFor() {
+            while (!hasResult()) {
+                Thread.sleep(SLEEP_TIME_MS);
             }
-        };
+        }
+
+        @Override
+        public void onProcessComplete(int exitValue) {
+            hasResult = true;
+            mediaStatus();
+        }
+
+        @Override
+        public void onProcessFailed(ExecuteException e) {
+            hasResult = true;
+            mediaStatus();
+        }
+    }
+
+    public FfmpegExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
+        return new FfmpegExecuteResultHandler(request,device,key,sender);
     }
 
     /**

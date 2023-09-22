@@ -46,11 +46,10 @@ public class FfmpegSupportService {
     public Executor ffmpegExecutor(String inputParam,String outputParam, long time, TimeUnit unit,ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         String logLevelParam = StringUtils.joinWith(" ","-loglevel", rtp.getLogLevel());
-        String command = StringUtils.joinWith(" ", ffmpegConfig.getFfmpeg(), inputParam, outputParam, logLevelParam);
+        String command = StringUtils.joinWith(" ", ffmpegConfig.getFfmpeg(), logLevelParam, inputParam, outputParam);
         CommandLine commandLine = CommandLine.parse(command);
         Executor executor = new DefaultExecutor();
         ExecuteWatchdog watchdog = new ExecuteWatchdog(unit.toMillis(time));
-        executor.setExitValue(0);
         executor.setWatchdog(watchdog);
         executor.execute(commandLine, resultHandler);
         return executor;
