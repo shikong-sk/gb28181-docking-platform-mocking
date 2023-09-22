@@ -36,7 +36,8 @@ gb28181:
     ip:
 #      - 10.27.0.1
       - 192.168.0.195
-      - 192.168.10.195
+      - 172.16.1.90
+#      - 192.168.10.195
 #      - 10.10.10.20
 #      - 10.27.0.6
     # [可选] 28181服务监听的端口
@@ -53,8 +54,8 @@ gb28181:
     expire: 3600
     transport: "UDP"
   server:
-    ip: 192.168.10.32
-#    ip: 192.168.3.12
+#    ip: 192.168.10.32
+    ip: 192.168.3.12
     port: 5060
     password: 123456
     domain: 4405010000
@@ -79,7 +80,7 @@ ffmpeg-support:
   rtp:
     download: -i
     input: -re -i
-    output: -vcodec h264 -acodec aac -f rtp_mpegts
+    output: -vcodec h264 -acodec aac -preset ultrafast -f rtp_mpegts
   debug:
     download: false
     input: false
