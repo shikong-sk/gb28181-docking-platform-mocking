@@ -21,13 +21,14 @@ import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PreDestroy;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteResultHandler;
 import org.apache.commons.exec.Executor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.sip.SipProvider;
+import javax.sip.address.SipURI;
 import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
@@ -92,6 +93,22 @@ public class DeviceProxyService {
             downloadTask.put(device.getDeviceCode(), executor);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
             executeResultHandler.waitFor();
+
+            String ip = request.getLocalAddress().getHostAddress();
+            SipURI targetUri = (SipURI) request.getFromHeader().getAddress().getURI();
+            String targetId = targetUri.getUser();
+            String targetIp = request.getRemoteAddress().getHostAddress();
+            int targetPort = request.getTopmostViaHeader().getPort();
+            String transport = request.getTopmostViaHeader().getTransport();
+            long seqNumber = request.getCSeq().getSeqNumber() + 1;
+            SipProvider provider = sender.getProvider(transport, ip);
+            CallIdHeader newCallId = provider.getNewCallId();
+            Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
+           try{
+               provider.sendRequest(byeRequest);
+           }catch (Exception e){
+               log.error("bye 请求发送失败 {}",e.getMessage());
+           }
         };
     }
 

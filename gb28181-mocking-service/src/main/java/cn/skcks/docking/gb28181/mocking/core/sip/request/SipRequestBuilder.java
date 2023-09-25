@@ -21,6 +21,7 @@ import javax.sip.address.Address;
 import javax.sip.address.SipURI;
 import javax.sip.header.*;
 import javax.sip.message.Request;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -218,4 +219,41 @@ public class SipRequestBuilder implements ApplicationContextAware {
         request.setContent(content, contentTypeHeader);
         return request;
     }
+
+    @SneakyThrows
+    public static Request createByeRequest(String ip, int port, long cSeq, String targetId, String fromTag, String toTag, String callId) {
+        Request request;
+        // 请求行
+        String target = StringUtils.joinWith(":", ip, port);
+        SipURI requestLine = MessageHelper.createSipURI(targetId, target);
+        // via
+        ArrayList<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
+        ViaHeader viaHeader = getSipFactory().createHeaderFactory().createViaHeader(ip, port, sipConfig.getTransport(), SipUtil.generateViaTag());
+        viaHeaders.add(viaHeader);
+        // from
+        SipURI fromSipURI = MessageHelper.createSipURI(sipConfig.getId(), sipConfig.getDomain());
+        Address fromAddress = MessageHelper.createAddress(fromSipURI);
+        FromHeader fromHeader = MessageHelper.createFromHeader(fromAddress, fromTag);
+        // to
+        SipURI toSipURI = MessageHelper.createSipURI(targetId, target);
+        Address toAddress = MessageHelper.createAddress(toSipURI);
+        ToHeader toHeader = MessageHelper.createToHeader(toAddress, toTag);
+
+        // Forwards
+        MaxForwardsHeader maxForwards = getSipFactory().createHeaderFactory().createMaxForwardsHeader(70);
+
+        // ceq
+        CSeqHeader cSeqHeader = getSipFactory().createHeaderFactory().createCSeqHeader(cSeq, Request.BYE);
+        CallIdHeader callIdHeader = getSipFactory().createHeaderFactory().createCallIdHeader(callId);
+        request = getSipFactory().createMessageFactory().createRequest(requestLine, Request.BYE, callIdHeader, cSeqHeader, fromHeader, toHeader, viaHeaders, maxForwards);
+
+        request.addHeader(SipUtil.createUserAgentHeader());
+
+        Address concatAddress = MessageHelper.createAddress(MessageHelper.createSipURI(sipConfig.getId(), ip + ":" + port));
+        request.addHeader(getSipFactory().createHeaderFactory().createContactHeader(concatAddress));
+        request.addHeader(SipUtil.createUserAgentHeader());
+
+        return request;
+    }
+
 }

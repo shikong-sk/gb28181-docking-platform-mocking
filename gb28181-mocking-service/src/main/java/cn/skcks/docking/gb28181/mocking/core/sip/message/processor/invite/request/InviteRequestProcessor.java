@@ -182,7 +182,7 @@ public class InviteRequestProcessor implements MessageProcessor {
 
         String senderIp = request.getLocalAddress().getHostAddress();
         String transport = request.getTopmostViaHeader().getTransport();
-        int taskNum = deviceProxyService.getTaskNum().get();
+        int taskNum = DeviceProxyService.getTaskNum().get();
         log.info("当前任务数 {}", taskNum);
         if(ffmpegConfig.getTask().getMax() > 0 && taskNum >= ffmpegConfig.getTask().getMax()){
             log.warn("任务数过多 性能受限, 返回 486");
@@ -282,7 +282,6 @@ public class InviteRequestProcessor implements MessageProcessor {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
                 deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, deviceProxyService.downloadTask());
-
                 onComplete();
             }
 
