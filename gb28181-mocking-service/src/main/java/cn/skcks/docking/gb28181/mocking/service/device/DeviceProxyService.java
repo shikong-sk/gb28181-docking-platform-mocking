@@ -93,22 +93,6 @@ public class DeviceProxyService {
             downloadTask.put(device.getDeviceCode(), executor);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
             executeResultHandler.waitFor();
-
-            String ip = request.getLocalAddress().getHostAddress();
-            SipURI targetUri = (SipURI) request.getFromHeader().getAddress().getURI();
-            String targetId = targetUri.getUser();
-            String targetIp = request.getRemoteAddress().getHostAddress();
-            int targetPort = request.getTopmostViaHeader().getPort();
-            String transport = request.getTopmostViaHeader().getTransport();
-            long seqNumber = request.getCSeq().getSeqNumber() + 1;
-            SipProvider provider = sender.getProvider(transport, ip);
-            CallIdHeader newCallId = request.getCallId();
-            Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
-           try{
-               provider.sendRequest(byeRequest);
-           }catch (Exception e){
-               log.error("bye 请求发送失败 {}",e.getMessage());
-           }
         };
     }
 
@@ -199,6 +183,22 @@ public class DeviceProxyService {
             String tag = request.getFromHeader().getTag();
             sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
                     ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
+
+            String ip = request.getLocalAddress().getHostAddress();
+            SipURI targetUri = (SipURI) request.getFromHeader().getAddress().getURI();
+            String targetId = targetUri.getUser();
+            String targetIp = request.getRemoteAddress().getHostAddress();
+            int targetPort = request.getTopmostViaHeader().getPort();
+            String transport = request.getTopmostViaHeader().getTransport();
+            long seqNumber = request.getCSeq().getSeqNumber() + 1;
+            SipProvider provider = sender.getProvider(transport, ip);
+            CallIdHeader newCallId = request.getCallId();
+            Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
+            try{
+                provider.sendRequest(byeRequest);
+            }catch (Exception e){
+                log.error("bye 请求发送失败 {}",e.getMessage());
+            }
         }
 
         public boolean hasResult() {
