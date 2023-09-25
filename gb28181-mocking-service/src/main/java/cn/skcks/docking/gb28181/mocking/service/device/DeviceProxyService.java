@@ -102,7 +102,7 @@ public class DeviceProxyService {
             String transport = request.getTopmostViaHeader().getTransport();
             long seqNumber = request.getCSeq().getSeqNumber() + 1;
             SipProvider provider = sender.getProvider(transport, ip);
-            CallIdHeader newCallId = provider.getNewCallId();
+            CallIdHeader newCallId = request.getCallId();
             Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
            try{
                provider.sendRequest(byeRequest);
