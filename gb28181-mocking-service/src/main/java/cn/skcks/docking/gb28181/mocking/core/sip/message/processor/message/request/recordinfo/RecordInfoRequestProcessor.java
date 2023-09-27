@@ -82,7 +82,7 @@ public class RecordInfoRequestProcessor {
         recordInfoItemDTO.setDeviceId(device.getGbChannelId());
 
         FromHeader fromHeader = request.getFromHeader();
-        ListUtil.partition(recordInfoItemDTOList,2).forEach(recordList->{
+        ListUtil.partition(recordInfoItemDTOList,500).forEach(recordList->{
             RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
             recordInfoResponseDTO.setSn(recordInfoRequestDTO.getSn());
             recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
