@@ -1,20 +1,23 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo.dto;
 
-import cn.skcks.docking.gb28181.core.sip.gb28181.constant.CmdType;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.List;
-
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
 @JacksonXmlRootElement(localName = "Response")
 public class RecordInfoResponseDTO {
     /**
      * 命令类型:设备信息查询(必选)
      */
-    private String cmdType = CmdType.RECORD_INFO;
+    @Builder.Default
+    private String cmdType = "RecordInfo";
 
     /**
      * 命令序列号(必选)
@@ -32,7 +35,5 @@ public class RecordInfoResponseDTO {
 
     private Long sumNum;
 
-    @JacksonXmlElementWrapper(localName = "RecordList")
-    @JacksonXmlProperty(localName = "Item")
-    private List<RecordInfoItemDTO> recordList;
+    private RecordListDTO recordList;
 }

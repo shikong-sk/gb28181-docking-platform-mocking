@@ -7,6 +7,7 @@ import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.message.processor.message.types.recordinfo.query.dto.RecordInfoRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo.dto.RecordInfoItemDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo.dto.RecordInfoResponseDTO;
+import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.recordinfo.dto.RecordListDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
@@ -88,7 +89,11 @@ public class RecordInfoRequestProcessor {
             recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
             recordInfoResponseDTO.setName(device.getName());
             recordInfoResponseDTO.setSumNum((long) recordInfoItemDTOList.size());
-            recordInfoResponseDTO.setRecordList(recordList);
+            RecordListDTO recordListDTO = RecordListDTO.builder()
+                    .recordList(recordList)
+                    .num(recordList.size())
+                    .build();
+            recordInfoResponseDTO.setRecordList(recordListDTO);
 
             sender.sendRequest((provider, ip, port) -> {
                 CallIdHeader callIdHeader = provider.getNewCallId();
