@@ -62,7 +62,9 @@ gb28181:
     id: 44050100002000000001
 
 media:
-  ip: 192.168.10.32
+  local:
+    hook: http://192.168.3.11:18182/zlm/hook
+  ip: 192.168.3.12
   url: 'http://192.168.3.12:5081'
   #  url: 'http://10.10.10.200:12580/anything/'
   id: amrWMKmbKqoBjRQ9

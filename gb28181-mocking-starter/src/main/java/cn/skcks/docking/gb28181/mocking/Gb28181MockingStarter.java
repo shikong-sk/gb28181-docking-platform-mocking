@@ -8,6 +8,7 @@ import org.springframework.context.annotation.ComponentScan;
 @EnableFeignClients(basePackages = "cn.skcks.docking.gb28181.media")
 @SpringBootApplication
 @ComponentScan(basePackages = {
+        "cn.skcks.docking.gb28181.media",
         "cn.skcks.docking.gb28181.annotation",
         "cn.skcks.docking.gb28181.common",
         "cn.skcks.docking.gb28181.mocking",

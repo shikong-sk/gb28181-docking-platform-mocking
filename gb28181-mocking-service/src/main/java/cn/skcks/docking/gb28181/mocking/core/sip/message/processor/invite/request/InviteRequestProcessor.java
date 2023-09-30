@@ -6,6 +6,7 @@ import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
+import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
@@ -217,7 +218,7 @@ public class InviteRequestProcessor implements MessageProcessor {
             add(respMediaDescription);
         }});
         description.setSsrcField(gb28181Description.getSsrcField());
-
+        String ssrc = gb28181Description.getSsrcField().getSsrc();
         String callId = request.getCallId().getCallId();
         String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
         subscribe.getAckSubscribe().addPublisher(key);
@@ -225,9 +226,9 @@ public class InviteRequestProcessor implements MessageProcessor {
         final ScheduledFuture<?>[] schedule = new ScheduledFuture<?>[1];
         Flow.Subscriber<SIPRequest> subscriber;
         if(!isDownload){
-            subscriber = placbackSubscriber(request, callId,device,start,stop,address,port,key,schedule);
+            subscriber = placbackSubscriber(request, callId,device,start,stop,address,port,key,ssrc,schedule);
         } else {
-            subscriber = downloadSubscriber(request, callId,device,start,stop,address,port,key,schedule);
+            subscriber = downloadSubscriber(request, callId,device,start,stop,address,port,key,ssrc,schedule);
         }
         // 60秒超时计时器
         schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
@@ -240,7 +241,7 @@ public class InviteRequestProcessor implements MessageProcessor {
         }, 1,TimeUnit.SECONDS);
     }
 
-    public Flow.Subscriber<SIPRequest> placbackSubscriber(SIPRequest request,String callId,MockingDevice device,Date start,Date stop,String address,int port,String key,ScheduledFuture<?>[] scheduledFuture){
+    public Flow.Subscriber<SIPRequest> placbackSubscriber(SIPRequest request,String callId,MockingDevice device,Date start,Date stop,String address,int port,String key, String ssrc,ScheduledFuture<?>[] scheduledFuture){
         return new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
@@ -252,7 +253,7 @@ public class InviteRequestProcessor implements MessageProcessor {
             public void onNext(SIPRequest item) {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
-                deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, deviceProxyService.playbackTask());
+                deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port,ssrc, deviceProxyService.playbackTask());
                 onComplete();
             }
 
@@ -269,7 +270,7 @@ public class InviteRequestProcessor implements MessageProcessor {
         };
     }
 
-    public Flow.Subscriber<SIPRequest> downloadSubscriber(SIPRequest request,String callId,MockingDevice device,Date start,Date stop,String address,int port,String key,ScheduledFuture<?>[] scheduledFuture){
+    public Flow.Subscriber<SIPRequest> downloadSubscriber(SIPRequest request,String callId,MockingDevice device,Date start,Date stop,String address,int port,String key,String ssrc,ScheduledFuture<?>[] scheduledFuture){
         return new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
@@ -281,7 +282,7 @@ public class InviteRequestProcessor implements MessageProcessor {
             public void onNext(SIPRequest item) {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
                 // RTP 推流
-                deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, deviceProxyService.downloadTask());
+                deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port, ssrc,deviceProxyService.downloadTask());
                 onComplete();
             }
 
