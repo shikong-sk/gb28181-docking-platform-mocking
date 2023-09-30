@@ -12,6 +12,9 @@ public class GB28181DescriptionParserFactory {
         if(fieldName.equalsIgnoreCase("y")){
             return new SsrcFieldParser(field);
         }
+        if(fieldName.equalsIgnoreCase("f")){
+            return new FormatFieldParser(field);
+        }
         return ParserFactory.createParser(field);
     }
 }
