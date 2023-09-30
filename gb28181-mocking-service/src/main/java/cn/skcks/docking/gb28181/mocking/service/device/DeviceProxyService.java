@@ -80,12 +80,6 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             taskNum.getAndIncrement();
-            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
-            log.info("openRtpServerResp {}",openRtpServerResp);
-            Integer port = openRtpServerResp.getPort();
-            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
-            Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
                 startSendRtp.setApp("rtp");
@@ -98,6 +92,12 @@ public class DeviceProxyService {
                 StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
                 log.info("startSendRtpResp {}",startSendRtpResp);
             });
+            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
+            log.info("openRtpServerResp {}",openRtpServerResp);
+            Integer port = openRtpServerResp.getPort();
+            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
+            Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
             callbackTask.put(device.getDeviceCode(), executor);
             executeResultHandler.waitFor();
@@ -112,11 +112,6 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             taskNum.getAndIncrement();
-            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
-            Integer port = openRtpServerResp.getPort();
-            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
-            Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
                 startSendRtp.setApp("rtp");
@@ -129,8 +124,13 @@ public class DeviceProxyService {
                 StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
                 log.info("startSendRtpResp {}",startSendRtpResp);
             });
-            downloadTask.put(device.getDeviceCode(), executor);
+            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
+            Integer port = openRtpServerResp.getPort();
+            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
+            Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
             scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+            downloadTask.put(device.getDeviceCode(), executor);
             executeResultHandler.waitFor();
         };
     }

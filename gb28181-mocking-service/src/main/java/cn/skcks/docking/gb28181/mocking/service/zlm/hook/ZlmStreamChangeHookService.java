@@ -16,7 +16,7 @@ public class ZlmStreamChangeHookService {
 
     public ConcurrentMap<String, ZlmStreamChangeHookHandler> handlerMap = new ConcurrentHashMap<>();
 
-    synchronized public void processEvent(String streamId, Boolean regist){
+    public void processEvent(String streamId, Boolean regist){
         if(!regist){
             return;
         }
