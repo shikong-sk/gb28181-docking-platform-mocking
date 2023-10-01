@@ -79,7 +79,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            int num = taskNum.getAndIncrement();
+            int num = taskNum.incrementAndGet();
             log.info("当前任务数 {}", num);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
@@ -112,7 +112,7 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            int num = taskNum.getAndIncrement();
+            int num = taskNum.incrementAndGet();
             log.info("当前任务数 {}", num);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
@@ -210,7 +210,8 @@ public class DeviceProxyService {
         private final SipSender sender;
 
         private void mediaStatus(){
-            taskNum.getAndDecrement();
+            int num = taskNum.decrementAndGet();
+            log.info("当前任务数 {}", num);
             CallIdHeader requestCallId = request.getCallId();
             String callId = requestCallId.getCallId();
             callbackTask.remove(callId);
