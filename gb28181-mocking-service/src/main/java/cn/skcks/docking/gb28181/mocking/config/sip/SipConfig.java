@@ -31,6 +31,8 @@ public class SipConfig {
 
 	Integer ptzSpeed = 50;
 
+	Integer keepAlive = 60;
+
 	Integer registerTimeInterval = 120;
 
 	private String transport = ListeningPoint.UDP;

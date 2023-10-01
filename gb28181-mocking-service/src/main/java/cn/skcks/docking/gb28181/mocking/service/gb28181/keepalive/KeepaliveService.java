@@ -2,6 +2,7 @@ package cn.skcks.docking.gb28181.mocking.service.gb28181.keepalive;
 
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
+import cn.skcks.docking.gb28181.mocking.config.sip.SipConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.keepalive.KeepaliveNotifyDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
@@ -17,6 +18,7 @@ import java.util.concurrent.*;
 @Service
 @RequiredArgsConstructor
 public class KeepaliveService {
+    private final SipConfig sipConfig;
     private final SipSender sender;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
@@ -40,7 +42,7 @@ public class KeepaliveService {
                         SipUtil.generateFromTag(),
                         callIdHeader);
             });
-        }, 0, 30, TimeUnit.SECONDS);
+        }, 0, sipConfig.getKeepAlive(), TimeUnit.SECONDS);
         map.put(mockingDevice.getGbDeviceId(), scheduledFuture);
     }
 
