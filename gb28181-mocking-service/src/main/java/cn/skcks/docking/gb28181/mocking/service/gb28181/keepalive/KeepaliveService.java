@@ -45,10 +45,9 @@ public class KeepaliveService {
     }
 
     public void unKeepalive(MockingDevice mockingDevice){
-        ScheduledFuture<?> scheduledFuture = map.get(mockingDevice.getDeviceCode());
+        ScheduledFuture<?> scheduledFuture = map.remove(mockingDevice.getGbDeviceId());
         if(scheduledFuture != null){
             scheduledFuture.cancel(true);
         }
-        map.remove(mockingDevice.getDeviceCode());
     }
 }
