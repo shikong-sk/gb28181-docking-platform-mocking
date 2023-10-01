@@ -99,7 +99,9 @@ public class InviteRequestProcessor implements MessageProcessor {
                 if (StringUtils.equalsAnyIgnoreCase(type, "Play", "PlayBack")) {
                     log.info("点播/回放请求");
                     if (StringUtils.equalsIgnoreCase(type, "Play")) {
-                        play(request, device, gb28181Description, (MediaDescription) item);
+                        // 暂不支持实时
+                        sender.sendResponse(senderIp, transport, unsupported(request));
+                        // play(request, device, gb28181Description, (MediaDescription) item);
                     } else {
                         playback(request, device, gb28181Description, (MediaDescription) item);
                     }
@@ -138,7 +140,7 @@ public class InviteRequestProcessor implements MessageProcessor {
     @SneakyThrows
     private void play(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
         TimeField time = new TimeField();
-        time.setStart(DateUtil.offsetMinute(DateUtil.date(), -15));
+        time.setStart(DateUtil.offsetMinute(DateUtil.date(), -5));
         time.setStop(DateUtil.date());
         playback(request, device, gb28181Description, mediaDescription, time);
     }

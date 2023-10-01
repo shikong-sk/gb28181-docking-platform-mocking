@@ -79,7 +79,8 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, callbackTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            taskNum.getAndIncrement();
+            int num = taskNum.getAndIncrement();
+            log.info("当前任务数 {}", num);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
                 startSendRtp.setApp("rtp");
@@ -111,7 +112,8 @@ public class DeviceProxyService {
             });
             Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, downloadTask);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
-            taskNum.getAndIncrement();
+            int num = taskNum.getAndIncrement();
+            log.info("当前任务数 {}", num);
             zlmStreamChangeHookService.handlerMap.put(key,()->{
                 StartSendRtp startSendRtp = new StartSendRtp();
                 startSendRtp.setApp("rtp");
