@@ -75,7 +75,7 @@ ffmpeg-support:
   ffprobe: /usr/bin/ffmpeg/ffprobe
   rtp:
     input: -re -i
-    output: -vcodec h264 -acodec aac -f rtp_mpegts
+    output: -vcodec h264 -acodec aac -f flv
   debug:
     download: false
     input: false

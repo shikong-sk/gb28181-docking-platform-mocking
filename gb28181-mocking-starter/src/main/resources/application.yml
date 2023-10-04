@@ -70,6 +70,8 @@ media:
   id: amrWMKmbKqoBjRQ9
 #  secret: 035c73f7-bb6b-4889-a715-d9eb2d1925cc
   secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
+  rtmp:
+    port: 1935
 proxy:
   device:
     url: http://192.168.2.3:18183
@@ -82,7 +84,7 @@ ffmpeg-support:
   rtp:
     download: -i
     input: -re -i
-    output: -vcodec h264 -acodec aac -preset ultrafast -vf scale=640:-1 -f rtp_mpegts
+    output: -vcodec h264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
   debug:
     download: false
     input: false

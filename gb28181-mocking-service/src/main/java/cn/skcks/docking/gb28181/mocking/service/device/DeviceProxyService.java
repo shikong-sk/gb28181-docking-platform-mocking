@@ -8,12 +8,16 @@ import cn.hutool.core.net.URLEncodeUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
+import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.media.config.ZlmMediaConfig;
 import cn.skcks.docking.gb28181.media.dto.rtp.*;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
+import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtmpConfig;
+import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
+import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParserFactory;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
@@ -32,6 +36,7 @@ import org.apache.commons.exec.Executor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.sdp.MediaDescription;
 import javax.sip.SipProvider;
 import javax.sip.address.SipURI;
 import javax.sip.header.CallIdHeader;
@@ -39,6 +44,7 @@ import javax.sip.message.Request;
 import javax.sip.message.Response;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
@@ -66,6 +72,7 @@ public class DeviceProxyService {
     private final ZlmMediaService zlmMediaService;
     private final ZlmMediaConfig zlmMediaConfig;
     private final ZlmStreamChangeHookService zlmStreamChangeHookService;
+    private final ZlmRtmpConfig zlmRtmpConfig;
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public interface TaskProcessor {
@@ -81,27 +88,31 @@ public class DeviceProxyService {
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             int num = taskNum.incrementAndGet();
             log.info("当前任务数 {}", num);
-            zlmStreamChangeHookService.handlerMap.put(key,()->{
-                StartSendRtp startSendRtp = new StartSendRtp();
-                startSendRtp.setApp("rtp");
-                startSendRtp.setStream(key);
-                startSendRtp.setSsrc(ssrc);
-                startSendRtp.setDstUrl(toAddr);
-                startSendRtp.setDstPort(toPort);
-                startSendRtp.setUdp(true);
-                log.info("startSendRtp {}",startSendRtp);
-                StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
-                log.info("startSendRtpResp {}",startSendRtpResp);
-            });
-            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
-            log.info("openRtpServerResp {}",openRtpServerResp);
-            Integer port = openRtpServerResp.getPort();
-            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
-            Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-            scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-            callbackTask.put(device.getDeviceCode(), executor);
-            executeResultHandler.waitFor();
+            try {
+                GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
+                MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
+                boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
+                zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                    StartSendRtp startSendRtp = new StartSendRtp();
+                    startSendRtp.setApp("live");
+                    startSendRtp.setStream(callId);
+                    startSendRtp.setSsrc(ssrc);
+                    startSendRtp.setDstUrl(toAddr);
+                    startSendRtp.setDstPort(toPort);
+                    startSendRtp.setUdp(!tcp);
+                    log.info("startSendRtp {}",startSendRtp);
+                    StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                    log.info("startSendRtpResp {}",startSendRtpResp);
+                });
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
+                Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+                callbackTask.put(device.getDeviceCode(), executor);
+                executeResultHandler.waitFor();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         };
     }
 
@@ -114,26 +125,31 @@ public class DeviceProxyService {
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
             int num = taskNum.incrementAndGet();
             log.info("当前任务数 {}", num);
-            zlmStreamChangeHookService.handlerMap.put(key,()->{
-                StartSendRtp startSendRtp = new StartSendRtp();
-                startSendRtp.setApp("rtp");
-                startSendRtp.setStream(key);
-                startSendRtp.setSsrc(ssrc);
-                startSendRtp.setDstUrl(toAddr);
-                startSendRtp.setDstPort(toPort);
-                startSendRtp.setUdp(true);
-                log.info("startSendRtp {}",startSendRtp);
-                StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
-                log.info("startSendRtpResp {}",startSendRtpResp);
-            });
-            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-            OpenRtpServerResp openRtpServerResp = zlmMediaService.openRtpServer(new OpenRtpServer(0, 0, key));
-            Integer port = openRtpServerResp.getPort();
-            String zlmRtpUrl = "rtp://" + zlmMediaConfig.getIp() + ":" + port;
-            Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-            scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-            downloadTask.put(device.getDeviceCode(), executor);
-            executeResultHandler.waitFor();
+            try {
+                GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
+                MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
+                boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
+                zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                    StartSendRtp startSendRtp = new StartSendRtp();
+                    startSendRtp.setApp("live");
+                    startSendRtp.setStream(callId);
+                    startSendRtp.setSsrc(ssrc);
+                    startSendRtp.setDstUrl(toAddr);
+                    startSendRtp.setDstPort(toPort);
+                    startSendRtp.setUdp(!tcp);
+                    log.info("startSendRtp {}",startSendRtp);
+                    StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                    log.info("startSendRtpResp {}",startSendRtpResp);
+                });
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
+                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+                downloadTask.put(device.getDeviceCode(), executor);
+                executeResultHandler.waitFor();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         };
     }
 
