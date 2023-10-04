@@ -58,6 +58,10 @@ gb28181:
     id: 44050100002000000001
 
 media:
+  local:
+    hook: http://10.10.10.200:18182/zlm/hook
+  rtmp:
+    port: 1935
   ip: 10.10.10.200
   url: 'http://10.10.10.200:5080'
   #  url: 'http://10.10.10.200:12580/anything/'
