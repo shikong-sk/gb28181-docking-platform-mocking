@@ -15,6 +15,7 @@ public class FfmpegConfig {
 
     @Data
     public static class Rtp {
+        private double downloadSpeed = 4.0;
         private String download = "-i";
         private String input = "-re -i";
         private String output = "-vcodec h264 -acodec aac -f rtp_mpegts";

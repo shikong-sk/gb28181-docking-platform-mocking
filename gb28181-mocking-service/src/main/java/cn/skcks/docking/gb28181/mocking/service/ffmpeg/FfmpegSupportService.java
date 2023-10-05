@@ -8,6 +8,7 @@ import org.apache.commons.exec.*;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.text.MessageFormat;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -33,7 +34,8 @@ public class FfmpegSupportService {
     public Executor pushDownload2Rtp(String input, String output, long time, TimeUnit unit, ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
-        String inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input);
+        String downloadSpeed = StringUtils.joinWith(" ","-filter:v", MessageFormat.format("\"setpts={0}*PTS\"",rtp.getDownloadSpeed()));
+        String inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input, downloadSpeed);
         log.info("视频下载参数 {}", inputParam);
 
         String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);
