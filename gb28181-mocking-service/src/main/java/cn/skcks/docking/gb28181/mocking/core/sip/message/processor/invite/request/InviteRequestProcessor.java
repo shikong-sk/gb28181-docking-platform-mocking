@@ -209,7 +209,8 @@ public class InviteRequestProcessor implements MessageProcessor {
             add(timeDescription);
         }});
         String[] mediaTypeCodes = new String[]{"98","96"};
-        MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0, SdpConstants.RTP_AVP, mediaTypeCodes);
+        String protocol = ((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol();
+        MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0,  StringUtils.isBlank(protocol)?SdpConstants.RTP_AVP:protocol, mediaTypeCodes);
         Arrays.stream(mediaTypeCodes).forEach((k)->{
             String v = MediaSdpHelper.RTPMAP.get(k);
             respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
