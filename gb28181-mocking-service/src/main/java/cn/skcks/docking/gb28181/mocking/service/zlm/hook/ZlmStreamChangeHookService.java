@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 @RequiredArgsConstructor
 public class ZlmStreamChangeHookService {
-    private ZlmHookConfig zlmHookConfig;
+    private final ZlmHookConfig zlmHookConfig;
     public interface ZlmStreamChangeHookHandler{
         void handler();
     }
