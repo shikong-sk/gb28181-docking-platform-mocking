@@ -4,7 +4,6 @@ import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
-import cn.hutool.core.net.URLEncodeUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
@@ -12,12 +11,12 @@ import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.media.config.ZlmMediaConfig;
-import cn.skcks.docking.gb28181.media.dto.rtp.*;
+import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtp;
+import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtpResp;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtmpConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
-import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParserFactory;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
@@ -42,9 +41,7 @@ import javax.sip.address.SipURI;
 import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
@@ -93,6 +90,11 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
@@ -130,6 +132,11 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
