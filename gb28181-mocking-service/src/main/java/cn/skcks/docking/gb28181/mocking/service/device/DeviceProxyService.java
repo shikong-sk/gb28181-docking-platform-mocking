@@ -90,11 +90,6 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.handlerMap.put(callId,()->{
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
@@ -132,11 +127,6 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.handlerMap.put(callId,()->{
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
