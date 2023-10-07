@@ -15,6 +15,7 @@ import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtp;
 import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtpResp;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
+import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtmpConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
@@ -42,6 +43,7 @@ import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,6 +55,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 @RequiredArgsConstructor
 public class DeviceProxyService {
+    private final ZlmHookConfig zlmHookConfig;
     private final DeviceProxyConfig proxyConfig;
 
     private final SipSubscribe subscribe;
@@ -189,7 +192,8 @@ public class DeviceProxyService {
         HashMap<String, String> map = new HashMap<>(3);
         String deviceCode = device.getDeviceCode();
         map.put("device_id", deviceCode);
-        map.put("begin_time",DateUtil.format(LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN) );
+        LocalDateTime fixedBeginTime = LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)).minus(zlmHookConfig.getFixed());
+        map.put("begin_time",DateUtil.format(fixedBeginTime, DatePattern.PURE_DATETIME_PATTERN) );
         map.put("end_time", DateUtil.format(LocalDateTimeUtil.of(endTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN));
         String query = URLUtil.buildQuery(map, StandardCharsets.UTF_8);
         fromUrl = StringUtils.joinWith("?", fromUrl, query);
