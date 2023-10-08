@@ -13,5 +13,4 @@ public class ZlmHookConfig {
     private String hook;
     private Duration delay = Duration.ofMillis(100);
     private Duration fixed = Duration.ofSeconds(30);
-    private Boolean proxy = true;
 }

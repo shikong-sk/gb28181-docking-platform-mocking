@@ -11,7 +11,6 @@ import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.media.config.ZlmMediaConfig;
-import cn.skcks.docking.gb28181.media.dto.proxy.AddStreamProxy;
 import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtp;
 import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtpResp;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
@@ -108,23 +107,12 @@ public class DeviceProxyService {
                 zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
                     sendBye(request,device,key);
                 });
-                if(zlmHookConfig.getProxy()){
-                    AddStreamProxy addStreamProxy = AddStreamProxy.builder()
-                            .app("live")
-                            .stream(callId)
-                            .url(fromUrl)
-                            .timeoutSec(30.0)
-                            .build();
-                    zlmMediaService.addStreamProxy(addStreamProxy);
-                    scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-                } else {
-                    FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-                    String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
-                    Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                    scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-                    callbackTask.put(device.getDeviceCode(), executor);
-                    executeResultHandler.waitFor();
-                }
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
+                Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+                callbackTask.put(device.getDeviceCode(), executor);
+                executeResultHandler.waitFor();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -159,23 +147,12 @@ public class DeviceProxyService {
                 zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
                     sendBye(request,device,key);
                 });
-                if(zlmHookConfig.getProxy()){
-                    AddStreamProxy addStreamProxy = AddStreamProxy.builder()
-                            .app("live")
-                            .stream(callId)
-                            .url(fromUrl)
-                            .timeoutSec(30.0)
-                            .build();
-                    zlmMediaService.addStreamProxy(addStreamProxy);
-                    scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-                } else {
-                    FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-                    String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
-                    Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                    scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
-                    downloadTask.put(device.getDeviceCode(), executor);
-                    executeResultHandler.waitFor();
-                }
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
+                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                scheduledExecutorService.schedule(subscriber::onComplete, time + 60, TimeUnit.SECONDS);
+                downloadTask.put(device.getDeviceCode(), executor);
+                executeResultHandler.waitFor();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
