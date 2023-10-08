@@ -1,9 +1,9 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.listener;
 
 import cn.skcks.docking.gb28181.common.json.ResponseStatus;
-import cn.skcks.docking.gb28181.core.sip.executor.DefaultSipExecutor;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
+import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import gov.nist.javax.sip.message.SIPRequest;
@@ -41,7 +41,7 @@ public class SipListenerImpl implements SipListener {
 
 
     @Override
-    @Async(DefaultSipExecutor.EXECUTOR_BEAN_NAME)
+    @Async(MockingExecutor.EXECUTOR_BEAN_NAME)
     public void processRequest(RequestEvent requestEvent) {
         String method = requestEvent.getRequest().getMethod();
         log.debug("传入请求 method => {}", method);
@@ -57,7 +57,7 @@ public class SipListenerImpl implements SipListener {
     }
 
     @Override
-    @Async(DefaultSipExecutor.EXECUTOR_BEAN_NAME)
+    @Async(MockingExecutor.EXECUTOR_BEAN_NAME)
     public void processResponse(ResponseEvent responseEvent) {
         Response response = responseEvent.getResponse();
         int status = response.getStatusCode();

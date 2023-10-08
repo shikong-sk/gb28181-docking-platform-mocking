@@ -1,7 +1,7 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe;
 
-import cn.skcks.docking.gb28181.core.sip.executor.DefaultSipExecutor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
+import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import jakarta.annotation.PostConstruct;
@@ -19,7 +19,7 @@ import java.util.concurrent.Executor;
 @RequiredArgsConstructor
 @Service
 public class SipSubscribe {
-    @Qualifier(DefaultSipExecutor.EXECUTOR_BEAN_NAME)
+    @Qualifier(MockingExecutor.EXECUTOR_BEAN_NAME)
     private final Executor executor;
     private GenericSubscribe<SIPResponse> registerSubscribe;
     private GenericSubscribe<SIPRequest> ackSubscribe;
