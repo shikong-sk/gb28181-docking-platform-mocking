@@ -21,6 +21,6 @@ public class ZlmHookApi {
 
     @PostJson("/on_stream_changed")
     public void onStreamChanged(@RequestBody ZlmStreamChangeDTO dto){
-        zlmStreamChangeHookService.processEvent(dto.getStream(), dto.getRegist());
+        zlmStreamChangeHookService.processEvent(dto.getStream(),dto.getStream(), dto.getRegist());
     }
 }

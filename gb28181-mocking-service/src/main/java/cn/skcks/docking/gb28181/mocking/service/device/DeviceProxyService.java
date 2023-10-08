@@ -92,7 +92,7 @@ public class DeviceProxyService {
                 GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
-                zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
@@ -103,6 +103,9 @@ public class DeviceProxyService {
                     log.info("startSendRtp {}",startSendRtp);
                     StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
                     log.info("startSendRtpResp {}",startSendRtpResp);
+                });
+                zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
+                    sendBye(request,device,key);
                 });
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                 String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
@@ -129,7 +132,7 @@ public class DeviceProxyService {
                 GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
-                zlmStreamChangeHookService.handlerMap.put(callId,()->{
+                zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
                     StartSendRtp startSendRtp = new StartSendRtp();
                     startSendRtp.setApp("live");
                     startSendRtp.setStream(callId);
@@ -140,6 +143,9 @@ public class DeviceProxyService {
                     log.info("startSendRtp {}",startSendRtp);
                     StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
                     log.info("startSendRtpResp {}",startSendRtpResp);
+                });
+                zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
+                    sendBye(request,device,key);
                 });
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                 String zlmRtpUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
@@ -216,7 +222,7 @@ public class DeviceProxyService {
     }
 
     @RequiredArgsConstructor
-    public static class FfmpegExecuteResultHandler implements ExecuteResultHandler {
+    public class FfmpegExecuteResultHandler implements ExecuteResultHandler {
         private final static long SLEEP_TIME_MS = 50;
         @Setter(AccessLevel.PRIVATE)
         private boolean hasResult = false;
@@ -224,39 +230,23 @@ public class DeviceProxyService {
         private final SIPRequest request;
         private final MockingDevice device;
         private final String key;
-        private final SipSender sender;
 
+        @SneakyThrows
         private void mediaStatus(){
             int num = taskNum.decrementAndGet();
             log.info("当前任务数 {}", num);
+            // 等待zlm推流结束, 如果 ffmpeg 结束 30秒 未能推流完成就主动结束
+            Thread.sleep(30 * 1000);
             CallIdHeader requestCallId = request.getCallId();
             String callId = requestCallId.getCallId();
             callbackTask.remove(callId);
-            log.info("{} 推流结束, 发送媒体通知", key);
-            MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
-                    .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
-                    .deviceId(device.getGbChannelId())
-                    .build();
-
-            String tag = request.getFromHeader().getTag();
-            sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
-                    ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
-
-            String ip = request.getLocalAddress().getHostAddress();
-            SipURI targetUri = (SipURI) request.getFromHeader().getAddress().getURI();
-            String targetId = targetUri.getUser();
-            String targetIp = request.getRemoteAddress().getHostAddress();
-            int targetPort = request.getTopmostViaHeader().getPort();
-            String transport = request.getTopmostViaHeader().getTransport();
-            long seqNumber = request.getCSeq().getSeqNumber() + 1;
-            SipProvider provider = sender.getProvider(transport, ip);
-            CallIdHeader newCallId = request.getCallId();
-            Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
-            try{
-                provider.sendRequest(byeRequest);
-            }catch (Exception e){
-                log.error("bye 请求发送失败 {}",e.getMessage());
+            Optional<ZlmStreamChangeHookService.ZlmStreamChangeHookHandler> optionalZlmStreamChangeHookHandler =
+                    Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler().remove(callId));
+            // 如果取消注册已完成就直接结束, 否则发送 bye请求 结束
+            if(optionalZlmStreamChangeHookHandler.isEmpty()){
+                return;
             }
+            sendBye(request,device,key);
         }
 
         public boolean hasResult() {
@@ -284,7 +274,7 @@ public class DeviceProxyService {
     }
 
     public FfmpegExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
-        return new FfmpegExecuteResultHandler(request,device,key,sender);
+        return new FfmpegExecuteResultHandler(request,device,key);
     }
 
     /**
@@ -294,5 +284,34 @@ public class DeviceProxyService {
     private void destroy(){
         callbackTask.values().parallelStream().forEach(executor -> executor.getWatchdog().destroyProcess());
         downloadTask.values().parallelStream().forEach(executor -> executor.getWatchdog().destroyProcess());
+    }
+
+    private void sendBye(SIPRequest request, MockingDevice device, String key){
+        CallIdHeader requestCallId = request.getCallId();
+        log.info("{} 推流结束, 发送媒体通知", key);
+        MediaStatusRequestDTO mediaStatusRequestDTO = MediaStatusRequestDTO.builder()
+                .sn(String.valueOf((int) ((Math.random() * 9 + 1) * 100000)))
+                .deviceId(device.getGbChannelId())
+                .build();
+
+        String tag = request.getFromHeader().getTag();
+        sender.sendRequest(((provider, ip, port) -> SipRequestBuilder.createMessageRequest(device,
+                ip, port, 1, XmlUtils.toXml(mediaStatusRequestDTO), SipUtil.generateViaTag(), tag, requestCallId)));
+
+        String ip = request.getLocalAddress().getHostAddress();
+        SipURI targetUri = (SipURI) request.getFromHeader().getAddress().getURI();
+        String targetId = targetUri.getUser();
+        String targetIp = request.getRemoteAddress().getHostAddress();
+        int targetPort = request.getTopmostViaHeader().getPort();
+        String transport = request.getTopmostViaHeader().getTransport();
+        long seqNumber = request.getCSeq().getSeqNumber() + 1;
+        SipProvider provider = sender.getProvider(transport, ip);
+        CallIdHeader newCallId = request.getCallId();
+        Request byeRequest = SipRequestBuilder.createByeRequest(targetIp, targetPort, seqNumber, targetId, SipUtil.generateFromTag(), null, newCallId.getCallId());
+        try{
+            provider.sendRequest(byeRequest);
+        }catch (Exception e){
+            log.error("bye 请求发送失败 {}",e.getMessage());
+        }
     }
 }

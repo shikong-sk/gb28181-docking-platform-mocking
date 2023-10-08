@@ -20,21 +20,30 @@ public class ZlmStreamChangeHookService {
         void handler();
     }
 
-    public ConcurrentMap<String, ZlmStreamChangeHookHandler> handlerMap = new ConcurrentHashMap<>();
+    public ConcurrentMap<String, ZlmStreamChangeHookHandler> registHandler = new ConcurrentHashMap<>();
+    public ConcurrentMap<String, ZlmStreamChangeHookHandler> unregistHandler = new ConcurrentHashMap<>();
 
-    public void processEvent(String streamId, Boolean regist){
-        log.debug("stream {}, regist {}", streamId, regist);
-        if(!regist){
-            return;
+    public void processEvent(String stream,String streamId, Boolean regist){
+        log.debug("stream {}, streamId {}, regist {}", stream,streamId, regist);
+
+        if(regist){
+            Optional.ofNullable(registHandler.remove(streamId)).ifPresent((handler)->{
+                try {
+                    Thread.sleep(zlmHookConfig.getDelay().toMillis());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                handler.handler();
+            });
+        } else {
+            Optional.ofNullable(unregistHandler.remove(streamId)).ifPresent((handler)->{
+                try {
+                    Thread.sleep(zlmHookConfig.getDelay().toMillis());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                handler.handler();
+            });
         }
-
-        Optional.ofNullable(handlerMap.remove(streamId)).ifPresent((handler)->{
-            try {
-                Thread.sleep(zlmHookConfig.getDelay().toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            handler.handler();
-        });
     }
 }
