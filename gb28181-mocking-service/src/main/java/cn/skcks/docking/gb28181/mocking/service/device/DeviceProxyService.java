@@ -118,6 +118,8 @@ public class DeviceProxyService {
                             return startSendRtpResp;
                         });
                     } catch (Exception e) {
+                        Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler().remove(callId))
+                                .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                         throw new RuntimeException(e);
                     }
                 });
@@ -174,6 +176,8 @@ public class DeviceProxyService {
                             return startSendRtpResp;
                         });
                     } catch (Exception e) {
+                        Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler().remove(callId))
+                                .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                         throw new RuntimeException(e);
                     }
                 });
