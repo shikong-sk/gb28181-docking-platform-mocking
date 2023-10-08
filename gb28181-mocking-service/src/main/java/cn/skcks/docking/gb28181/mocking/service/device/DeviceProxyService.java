@@ -273,17 +273,18 @@ public class DeviceProxyService {
             int num = taskNum.decrementAndGet();
             log.info("当前任务数 {}", num);
             // 等待zlm推流结束, 如果 ffmpeg 结束 30秒 未能推流完成就主动结束
-            Thread.sleep(30 * 1000);
-            CallIdHeader requestCallId = request.getCallId();
-            String callId = requestCallId.getCallId();
-            callbackTask.remove(callId);
-            Optional<ZlmStreamChangeHookService.ZlmStreamChangeHookHandler> optionalZlmStreamChangeHookHandler =
-                    Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler().remove(callId));
-            // 如果取消注册已完成就直接结束, 否则发送 bye请求 结束
-            if(optionalZlmStreamChangeHookHandler.isEmpty()){
-                return;
-            }
-            sendBye(request,device,key);
+            scheduledExecutorService.schedule(()->{
+                CallIdHeader requestCallId = request.getCallId();
+                String callId = requestCallId.getCallId();
+                callbackTask.remove(callId);
+                Optional<ZlmStreamChangeHookService.ZlmStreamChangeHookHandler> optionalZlmStreamChangeHookHandler =
+                        Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler().remove(callId));
+                // 如果取消注册已完成就直接结束, 否则发送 bye请求 结束
+                if(optionalZlmStreamChangeHookHandler.isEmpty()){
+                    return;
+                }
+                sendBye(request,device,key);
+            },30,TimeUnit.SECONDS);
         }
 
         public boolean hasResult() {
