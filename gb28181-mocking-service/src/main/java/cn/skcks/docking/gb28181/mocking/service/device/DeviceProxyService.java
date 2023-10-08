@@ -26,6 +26,7 @@ import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamChangeHookService;
+import com.github.rholder.retry.*;
 import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PreDestroy;
 import lombok.*;
@@ -93,16 +94,32 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
-                    StartSendRtp startSendRtp = new StartSendRtp();
-                    startSendRtp.setApp("live");
-                    startSendRtp.setStream(callId);
-                    startSendRtp.setSsrc(ssrc);
-                    startSendRtp.setDstUrl(toAddr);
-                    startSendRtp.setDstPort(toPort);
-                    startSendRtp.setUdp(!tcp);
-                    log.info("startSendRtp {}",startSendRtp);
-                    StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
-                    log.info("startSendRtpResp {}",startSendRtpResp);
+                    Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
+                            .retryIfResult(resp -> resp.getLocalPort() == null)
+                            .retryIfException()
+                            .retryIfRuntimeException()
+                            // 重试间隔
+                            .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                            // 重试次数
+                            .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                            .build();
+                    try {
+                        retryer.call(()->{
+                            StartSendRtp startSendRtp = new StartSendRtp();
+                            startSendRtp.setApp("live");
+                            startSendRtp.setStream(callId);
+                            startSendRtp.setSsrc(ssrc);
+                            startSendRtp.setDstUrl(toAddr);
+                            startSendRtp.setDstPort(toPort);
+                            startSendRtp.setUdp(!tcp);
+                            log.info("startSendRtp {}",startSendRtp);
+                            StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                            log.info("startSendRtpResp {}",startSendRtpResp);
+                            return startSendRtpResp;
+                        });
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 });
                 zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
                     sendBye(request,device,key);
@@ -133,16 +150,32 @@ public class DeviceProxyService {
                 MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
-                    StartSendRtp startSendRtp = new StartSendRtp();
-                    startSendRtp.setApp("live");
-                    startSendRtp.setStream(callId);
-                    startSendRtp.setSsrc(ssrc);
-                    startSendRtp.setDstUrl(toAddr);
-                    startSendRtp.setDstPort(toPort);
-                    startSendRtp.setUdp(!tcp);
-                    log.info("startSendRtp {}",startSendRtp);
-                    StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
-                    log.info("startSendRtpResp {}",startSendRtpResp);
+                    Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
+                            .retryIfResult(resp -> resp.getLocalPort() == null)
+                            .retryIfException()
+                            .retryIfRuntimeException()
+                            // 重试间隔
+                            .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                            // 重试次数
+                            .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                            .build();
+                    try {
+                        retryer.call(()->{
+                            StartSendRtp startSendRtp = new StartSendRtp();
+                            startSendRtp.setApp("live");
+                            startSendRtp.setStream(callId);
+                            startSendRtp.setSsrc(ssrc);
+                            startSendRtp.setDstUrl(toAddr);
+                            startSendRtp.setDstPort(toPort);
+                            startSendRtp.setUdp(!tcp);
+                            log.info("startSendRtp {}",startSendRtp);
+                            StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                            log.info("startSendRtpResp {}",startSendRtpResp);
+                            return startSendRtpResp;
+                        });
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 });
                 zlmStreamChangeHookService.getUnregistHandler().put(callId,()->{
                     sendBye(request,device,key);
