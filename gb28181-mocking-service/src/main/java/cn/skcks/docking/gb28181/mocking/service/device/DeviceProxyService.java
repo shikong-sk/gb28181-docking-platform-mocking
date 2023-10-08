@@ -95,7 +95,7 @@ public class DeviceProxyService {
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
                     Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
-                            .retryIfResult(resp -> resp.getLocalPort() == null)
+                            .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
                             .retryIfException()
                             .retryIfRuntimeException()
                             // 重试间隔
@@ -153,7 +153,7 @@ public class DeviceProxyService {
                 boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
                 zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
                     Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
-                            .retryIfResult(resp -> resp.getLocalPort() == null)
+                            .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
                             .retryIfException()
                             .retryIfRuntimeException()
                             // 重试间隔
