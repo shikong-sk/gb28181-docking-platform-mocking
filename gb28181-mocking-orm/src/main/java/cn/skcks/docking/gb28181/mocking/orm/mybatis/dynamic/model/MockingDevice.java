@@ -11,23 +11,54 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.id")
     private Long id;
 
+    /**
+     * Database Column Remarks:
+     *   自定义21位设备编码
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.device_code")
     private String deviceCode;
 
+    /**
+     * Database Column Remarks:
+     *   设备id
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_device_id")
     private String gbDeviceId;
 
+    /**
+     * Database Column Remarks:
+     *   通道id
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_channel_id")
     private String gbChannelId;
 
+    /**
+     * Database Column Remarks:
+     *   设备/通道名称
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.name")
     private String name;
 
+    /**
+     * Database Column Remarks:
+     *   设备地址信息
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.address")
     private String address;
 
+    /**
+     * Database Column Remarks:
+     *   是否启用
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
     private Boolean enable;
+
+    /**
+     * Database Column Remarks:
+     *   实时视频流地址
+     */
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.live_stream")
+    private String liveStream;
 
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.id")
     public Long getId() {
@@ -97,5 +128,15 @@ public class MockingDevice {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
     public void setEnable(Boolean enable) {
         this.enable = enable;
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.live_stream")
+    public String getLiveStream() {
+        return liveStream;
+    }
+
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.live_stream")
+    public void setLiveStream(String liveStream) {
+        this.liveStream = liveStream == null ? null : liveStream.trim();
     }
 }

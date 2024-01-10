@@ -24,5 +24,13 @@ public class MockingOrmInitService {
     public void init(){
         log.info("[orm] 自动建表");
         mapper.createDeviceTable();
+
+        log.info("[orm] 自动更新表结构");
+        mapper.dropProcedureUpdateDeviceTable();
+        mapper.createProcedureUpdateDeviceTable();
+        mapper.callProcedureUpdateDeviceTable();
+        mapper.dropProcedureUpdateDeviceTable();
+
+        log.info("[orm] 初始化完成");
     }
 }

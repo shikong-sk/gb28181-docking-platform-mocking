@@ -36,4 +36,9 @@ public class AckSubscribe implements GenericSubscribe<SIPRequest> {
     public void delPublisher(String key) {
         Helper.delPublisher(publishers, key);
     }
+
+    @Override
+    public void complete(String key) {
+        delPublisher(key);
+    }
 }

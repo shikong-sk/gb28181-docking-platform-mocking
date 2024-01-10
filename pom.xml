@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>cn.skcks.docking</groupId>
 	<artifactId>gb28181-mocking</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>gb28181-docking-platform-mocking</name>
 	<description>GB28181 Docking Platform</description>
@@ -57,7 +57,7 @@
 <!--		<docker.registry.password>XXX</docker.registry.password>-->
 		<docker.maven.plugin.version>1.4.13</docker.maven.plugin.version>
 
-		<gb28181.docking.version>0.0.1-SNAPSHOT</gb28181.docking.version>
+		<gb28181.docking.version>0.1.0-SNAPSHOT</gb28181.docking.version>
 	</properties>
 
 	<profiles>

@@ -17,4 +17,24 @@
                                           UNIQUE KEY `gb_device_id` (`gb_device_id`,`gb_channel_id`)
         ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     </update>
+
+    <update id="dropProcedureUpdateDeviceTable">
+        DROP PROCEDURE IF EXISTS update_mocking_device;
+    </update>
+
+    <update id="createProcedureUpdateDeviceTable">
+        CREATE PROCEDURE update_mocking_device()
+        BEGIN
+            IF ISNULL((SELECT 1 FROM information_schema.COLUMNS
+                       WHERE TABLE_SCHEMA = DATABASE()
+                         AND TABLE_NAME = "mocking_device"
+                         AND COLUMN_NAME = "live_stream" LIMIT 1))  THEN
+                ALTER TABLE `mocking_device` ADD COLUMN live_stream VARCHAR(255) DEFAULT NULL;
+            END IF;
+        END;
+    </update>
+
+    <update id="callProcedureUpdateDeviceTable">
+        CALL update_mocking_device();
+    </update>
 </mapper>

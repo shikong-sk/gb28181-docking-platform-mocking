@@ -12,23 +12,54 @@ public final class MockingDeviceDynamicSqlSupport {
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.id")
     public static final SqlColumn<Long> id = mockingDevice.id;
 
+    /**
+     * Database Column Remarks:
+     *   自定义21位设备编码
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.device_code")
     public static final SqlColumn<String> deviceCode = mockingDevice.deviceCode;
 
+    /**
+     * Database Column Remarks:
+     *   设备id
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_device_id")
     public static final SqlColumn<String> gbDeviceId = mockingDevice.gbDeviceId;
 
+    /**
+     * Database Column Remarks:
+     *   通道id
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.gb_channel_id")
     public static final SqlColumn<String> gbChannelId = mockingDevice.gbChannelId;
 
+    /**
+     * Database Column Remarks:
+     *   设备/通道名称
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.name")
     public static final SqlColumn<String> name = mockingDevice.name;
 
+    /**
+     * Database Column Remarks:
+     *   设备地址信息
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.address")
     public static final SqlColumn<String> address = mockingDevice.address;
 
+    /**
+     * Database Column Remarks:
+     *   是否启用
+     */
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.enable")
     public static final SqlColumn<Boolean> enable = mockingDevice.enable;
+
+    /**
+     * Database Column Remarks:
+     *   实时视频流地址
+     */
+    @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source field: mocking_device.live_stream")
+    public static final SqlColumn<String> liveStream = mockingDevice.liveStream;
 
     @Generated(value="org.mybatis.generator.api.MyBatisGenerator", comments="Source Table: mocking_device")
     public static final class MockingDevice extends AliasableSqlTable<MockingDevice> {
@@ -45,6 +76,8 @@ public final class MockingDeviceDynamicSqlSupport {
         public final SqlColumn<String> address = column("address", JDBCType.VARCHAR);
 
         public final SqlColumn<Boolean> enable = column("enable", JDBCType.BIT);
+
+        public final SqlColumn<String> liveStream = column("live_stream", JDBCType.VARCHAR);
 
         public MockingDevice() {
             super("mocking_device", MockingDevice::new);

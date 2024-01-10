@@ -38,7 +38,7 @@ docker run --name gb28181-mocking --rm \
   --log-opt max-size=1g \
   --network host \
   -v `pwd`/application.yml:/opt/gb28181-docking-platform-mocking/application.yml \
-  skcks.cn/gb28181-docking-platform-mocking:0.0.1-SNAPSHOT
+  skcks.cn/gb28181-docking-platform-mocking:0.1.0-SNAPSHOT
 ```
 
 ### 打包到本地私仓

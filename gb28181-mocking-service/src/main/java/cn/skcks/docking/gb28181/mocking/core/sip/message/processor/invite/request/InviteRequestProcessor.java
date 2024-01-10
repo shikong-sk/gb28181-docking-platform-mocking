@@ -1,20 +1,19 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.request;
 
 import cn.hutool.core.date.DateUtil;
-import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.GB28181Description;
-import cn.skcks.docking.gb28181.core.sip.gb28181.sdp.MediaSdpHelper;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
-import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
-import cn.skcks.docking.gb28181.mocking.core.sip.gb28181.sdp.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceProxyService;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
+import cn.skcks.docking.gb28181.sdp.GB28181Description;
+import cn.skcks.docking.gb28181.sdp.GB28181SDPBuilder;
+import cn.skcks.docking.gb28181.sdp.parser.GB28181DescriptionParser;
 import gov.nist.core.Separators;
 import gov.nist.javax.sdp.SessionDescriptionImpl;
 import gov.nist.javax.sdp.TimeDescriptionImpl;
@@ -196,7 +195,7 @@ public class InviteRequestProcessor implements MessageProcessor {
 
         SdpFactory sdpFactory = SdpFactory.getInstance();
         SessionDescriptionImpl sessionDescription = new SessionDescriptionImpl();
-        GB28181Description description = GB28181Description.Convertor.convert(sessionDescription);
+        GB28181Description description = new GB28181Description(sessionDescription);
         description.setVersion(sdpFactory.createVersion(0));
         // 目前只配置 ipv4
         description.setOrigin(sdpFactory.createOrigin(channelId, 0, 0, ConnectionField.IN, Connection.IP4, senderIp));
@@ -212,7 +211,7 @@ public class InviteRequestProcessor implements MessageProcessor {
         String protocol = ((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol();
         MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0,  StringUtils.isBlank(protocol)?SdpConstants.RTP_AVP:protocol, mediaTypeCodes);
         Arrays.stream(mediaTypeCodes).forEach((k)->{
-            String v = MediaSdpHelper.RTPMAP.get(k);
+            String v = GB28181SDPBuilder.RTPMAP.get(k);
             respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
         });
         respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute("sendonly", null));
