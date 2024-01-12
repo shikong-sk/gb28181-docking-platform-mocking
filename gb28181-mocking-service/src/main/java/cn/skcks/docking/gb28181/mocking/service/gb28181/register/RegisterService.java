@@ -50,10 +50,10 @@ public class RegisterService {
     public DeferredResult<JsonResponse<Boolean>> register() {
         DeferredResult<JsonResponse<Boolean>> result = new DeferredResult<>(TimeUnit.SECONDS.toMillis(TIMEOUT));
 
-        List<MockingDevice> allDevice = deviceService.getAllDevice();
+        List<MockingDevice> enabledDevice = deviceService.getAllEnabledDevice();
 
-        List<CompletableFuture<JsonResponse<Void>>[]> completableFutures = ListUtil.split(allDevice, 10).stream().map(items -> {
-            CompletableFuture<JsonResponse<Void>>[] array = allDevice.stream().map(this::register).toArray(CompletableFuture[]::new);
+        List<CompletableFuture<JsonResponse<Void>>[]> completableFutures = ListUtil.split(enabledDevice, 10).stream().map(items -> {
+            CompletableFuture<JsonResponse<Void>>[] array = enabledDevice.stream().map(this::register).toArray(CompletableFuture[]::new);
             CompletableFuture.allOf(array);
             return array;
         }).toList();
