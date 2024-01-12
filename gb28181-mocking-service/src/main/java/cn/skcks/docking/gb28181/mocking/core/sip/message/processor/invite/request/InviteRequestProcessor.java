@@ -1,6 +1,5 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.request;
 
-import cn.hutool.core.date.DateUtil;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
@@ -37,6 +36,7 @@ import java.util.concurrent.*;
 @Slf4j
 @RequiredArgsConstructor
 @Component
+@SuppressWarnings("Duplicates")
 public class InviteRequestProcessor implements MessageProcessor {
     private final SipListener sipListener;
 
@@ -127,17 +127,56 @@ public class InviteRequestProcessor implements MessageProcessor {
     }
 
     /**
-     * 模拟设备不支持实时 故直接回放 最近15分钟 至 当前时间录像
+     * 视频点播
      *
      * @param gb28181Description gb28181 sdp
      * @param mediaDescription   媒体描述符
      */
     @SneakyThrows
     private void play(SIPRequest request, MockingDevice device, GB28181Description gb28181Description, MediaDescription mediaDescription) {
-        TimeField time = new TimeField();
-        time.setStart(DateUtil.offsetMinute(DateUtil.date(), -5));
-        time.setStop(DateUtil.date());
-        playback(request, device, gb28181Description, mediaDescription, time);
+        TimeField timeField = new TimeField();
+        timeField.setZero();
+        SdpFactory.getInstance().createTimeDescription(timeField);
+
+        String channelId = gb28181Description.getOrigin().getUsername();
+        log.info("通道id: {}", channelId);
+        String address = gb28181Description.getOrigin().getAddress();
+        log.info("目标地址: {}", address);
+        Media media = mediaDescription.getMedia();
+        int port = media.getMediaPort();
+        log.info("目标端口号: {}", port);
+
+        String senderIp = request.getLocalAddress().getHostAddress();
+        String transport = request.getTopmostViaHeader().getTransport();
+        if(StringUtils.isBlank(device.getLiveStream())){
+            log.warn("设备({} => {}) 无可用实时流地址, 返回 418", device.getGbDeviceId(), channelId);
+            sender.sendResponse(senderIp, transport, unsupported(request));
+            return;
+        }
+
+        String ssrc = gb28181Description.getSsrcField().getSsrc();
+        GB28181Description sdp = GB28181SDPBuilder.Sender.build(GB28181SDPBuilder.Action.PLAY,
+                device.getGbDeviceId(),
+                channelId, Connection.IP4, address, port,
+                ssrc,
+                MediaStreamMode.of(((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol()),
+                SdpFactory.getInstance().createTimeDescription(timeField));
+        // playback(request, device, gb28181Description, mediaDescription, time);
+        String callId = request.getCallId().getCallId();
+        String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
+        subscribe.getAckSubscribe().addPublisher(key);
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        final ScheduledFuture<?>[] schedule = new ScheduledFuture<?>[1];
+        Flow.Subscriber<SIPRequest> subscriber = playSubscriber(request,callId,device,address,port,key,ssrc,schedule);
+        // 60秒超时计时器
+        schedule[0] = scheduledExecutorService.schedule(subscriber::onComplete, 60 , TimeUnit.SECONDS);
+        // 推流 ack 事件订阅
+        subscribe.getAckSubscribe().addSubscribe(key, subscriber);
+
+        scheduledExecutorService.schedule(()->{
+            // 发送 sdp 响应
+            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, sdp));
+        }, 1,TimeUnit.SECONDS);
     }
 
     /**
@@ -192,14 +231,15 @@ public class InviteRequestProcessor implements MessageProcessor {
         GB28181SDPBuilder.Action action = isDownload ? GB28181SDPBuilder.Action.DOWNLOAD : GB28181SDPBuilder.Action.PLAY_BACK;
         TimeField timeField = new TimeField();
         timeField.setZero();
+
+        String ssrc = gb28181Description.getSsrcField().getSsrc();
         GB28181Description sdp = GB28181SDPBuilder.Sender.build(action,
                 device.getGbDeviceId(),
                 channelId, Connection.IP4, address, port,
-                gb28181Description.getSsrcField().getSsrc(),
+                ssrc,
                 MediaStreamMode.of(((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol()),
                 SdpFactory.getInstance().createTimeDescription(timeField));
 
-        String ssrc = gb28181Description.getSsrcField().getSsrc();
         String callId = request.getCallId().getCallId();
         String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
         subscribe.getAckSubscribe().addPublisher(key);
@@ -220,6 +260,35 @@ public class InviteRequestProcessor implements MessageProcessor {
             // 发送 sdp 响应
             sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, sdp));
         }, 1,TimeUnit.SECONDS);
+    }
+
+    public Flow.Subscriber<SIPRequest> playSubscriber(SIPRequest request,String callId,MockingDevice device,String address,int port,String key, String ssrc,ScheduledFuture<?>[] scheduledFuture){
+        return new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                log.info("创建 ack 订阅 {}", key);
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(SIPRequest item) {
+                log.info("收到 ack 确认请求: {} 开始推流",key);
+                // RTP 推流
+                deviceProxyService.pullLiveStream2Rtp(request, callId, device, address, port,ssrc);
+                onComplete();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+
+            }
+
+            @Override
+            public void onComplete() {
+                subscribe.getAckSubscribe().delPublisher(key);
+                scheduledFuture[0].cancel(true);
+            }
+        };
     }
 
     public Flow.Subscriber<SIPRequest> placbackSubscriber(SIPRequest request,String callId,MockingDevice device,Date start,Date stop,String address,int port,String key, String ssrc,ScheduledFuture<?>[] scheduledFuture){

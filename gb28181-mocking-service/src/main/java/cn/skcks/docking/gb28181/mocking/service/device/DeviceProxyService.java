@@ -5,13 +5,19 @@ import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.URLUtil;
+import cn.skcks.docking.gb28181.common.redis.RedisUtil;
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
+import cn.skcks.docking.gb28181.core.sip.gb28181.cache.CacheUtil;
 import cn.skcks.docking.gb28181.core.sip.gb28181.constant.GB28181Constant;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
 import cn.skcks.docking.gb28181.core.sip.utils.SipUtil;
 import cn.skcks.docking.gb28181.media.config.ZlmMediaConfig;
+import cn.skcks.docking.gb28181.media.dto.proxy.AddStreamProxy;
+import cn.skcks.docking.gb28181.media.dto.proxy.AddStreamProxyResp;
+import cn.skcks.docking.gb28181.media.dto.response.ZlmResponse;
 import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtp;
 import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtpResp;
+import cn.skcks.docking.gb28181.media.dto.status.ResponseStatus;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
@@ -126,11 +132,11 @@ public class DeviceProxyService {
         return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
     }
 
-    private Flow.Subscriber<SIPRequest> task(ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
+    private Flow.Subscriber<SIPRequest> ffmpegTask(ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
         Optional.ofNullable(tasks.get(callId)).ifPresent(task->{
             task.getWatchdog().destroyProcess();
         });
-        Flow.Subscriber<SIPRequest> subscriber = byeSubscriber(key, device, tasks);
+        Flow.Subscriber<SIPRequest> subscriber = ffmpegByeSubscriber(key, device, tasks);
         subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         int num = taskNum.incrementAndGet();
         log.info("当前任务数 {}", num);
@@ -139,7 +145,7 @@ public class DeviceProxyService {
 
     public TaskProcessor playbackTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
-            Flow.Subscriber<SIPRequest> task = task(callbackTask, callId, key, device);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(callbackTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -157,7 +163,7 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
-            Flow.Subscriber<SIPRequest> task = task(downloadTask, callId, key, device);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(downloadTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -183,7 +189,7 @@ public class DeviceProxyService {
         }, 200, TimeUnit.MILLISECONDS);
     }
 
-    public Flow.Subscriber<SIPRequest> byeSubscriber(String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
+    public Flow.Subscriber<SIPRequest> ffmpegByeSubscriber(String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
         return new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
@@ -215,6 +221,115 @@ public class DeviceProxyService {
                 task.remove(device.getDeviceCode());
             }
         };
+    }
+
+    public Flow.Subscriber<SIPRequest> zlmByeSubscriber(String key, MockingDevice device){
+        return new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                log.info("订阅 bye {}", key);
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(SIPRequest item) {
+                String ip = item.getLocalAddress().getHostAddress();
+                String transPort = item.getTopmostViaHeader().getTransport();
+                sender.sendResponse(ip, transPort, ((provider, ip1, port) ->
+                        SipResponseBuilder.response(item, Response.OK, "OK")));
+                subscribe.getByeSubscribe().delPublisher(key);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {}
+
+            @Override
+            public void onComplete() {
+                log.info("bye 订阅结束 {}", key);
+                String cacheKey = CacheUtil.getKey("INVITE", "PROXY", key);
+                String proxyKey = RedisUtil.StringOps.get(cacheKey);
+                log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
+                RedisUtil.KeyOps.delete(cacheKey);
+            }
+        };
+    }
+
+    @SneakyThrows
+    public void pullLiveStream2Rtp(SIPRequest request,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
+        Retryer<ZlmResponse<AddStreamProxyResp>> retryer = RetryerBuilder.<ZlmResponse<AddStreamProxyResp>>newBuilder()
+                .retryIfResult(resp -> {
+                    log.info("resp {}", resp);
+                    return !resp.getCode().equals(ResponseStatus.Success);
+                })
+                .retryIfException()
+                .retryIfRuntimeException()
+                // 重试间隔
+                .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                // 重试次数
+                .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                .build();
+
+        String liveUrl = device.getLiveStream();
+
+        try {
+            ZlmResponse<AddStreamProxyResp> proxy = retryer.call(() -> zlmMediaService.addStreamProxy(AddStreamProxy.builder()
+                    .url(liveUrl)
+                    .app("live")
+                    .stream(callId)
+                    .build()));
+
+            log.info("使用 zlm 代理拉流 {}", proxy);
+            String proxyKey = proxy.getData().getKey();
+            String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
+            String cacheKey = CacheUtil.getKey("INVITE", "PROXY", key);
+            RedisUtil.StringOps.set(cacheKey, proxyKey);
+
+            GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
+            MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
+            boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
+
+            Retryer<StartSendRtpResp> rtpRetryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
+                    .retryIfResult(resp -> {
+                        log.info("resp {}", resp);
+                        return resp.getLocalPort() == null || resp.getLocalPort() <= 0;
+                    })
+                    .retryIfException()
+                    .retryIfRuntimeException()
+                    // 重试间隔
+                    .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                    // 重试次数
+                    .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                    .build();
+
+            zlmStreamChangeHookService.getRegistHandler().put(callId,()->{
+                try {
+                    rtpRetryer.call(()->{
+                        StartSendRtp startSendRtp = new StartSendRtp();
+                        startSendRtp.setApp("live");
+                        startSendRtp.setStream(callId);
+                        startSendRtp.setSsrc(ssrc);
+                        startSendRtp.setDstUrl(rtpAddr);
+                        startSendRtp.setDstPort(rtpPort);
+                        startSendRtp.setUdp(!tcp);
+                        log.info("startSendRtp {}",startSendRtp);
+                        StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                        log.info("startSendRtpResp {}",startSendRtpResp);
+                        return startSendRtpResp;
+                    });
+                } catch (Exception e){
+                    log.error("zlm rtp 推流失败",e);
+                    sendBye(request, device, "");
+                }
+            });
+
+            // zlmStreamChangeHookService.getUnregistHandler().put(callId,()-> sendBye(request,device,key));
+            Flow.Subscriber<SIPRequest> subscriber = zlmByeSubscriber(key,device);
+            subscribe.getByeSubscribe().addPublisher(key);
+            subscribe.getByeSubscribe().addSubscribe(key, subscriber);
+        } catch (Exception e) {
+            log.error("zlm 代理拉流失败",e);
+            sendBye(request, device, "");
+        }
     }
 
     public void proxyVideo2Rtp(SIPRequest request,String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, String ssrc, TaskProcessor taskProcessor) {

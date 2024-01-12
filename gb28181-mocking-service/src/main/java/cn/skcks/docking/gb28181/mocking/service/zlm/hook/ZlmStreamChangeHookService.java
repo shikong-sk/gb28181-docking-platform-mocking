@@ -23,8 +23,8 @@ public class ZlmStreamChangeHookService {
     public ConcurrentMap<String, ZlmStreamChangeHookHandler> registHandler = new ConcurrentHashMap<>();
     public ConcurrentMap<String, ZlmStreamChangeHookHandler> unregistHandler = new ConcurrentHashMap<>();
 
-    public void processEvent(String stream,String streamId, Boolean regist){
-        log.debug("stream {}, streamId {}, regist {}", stream,streamId, regist);
+    public void processEvent(String app,String streamId, Boolean regist){
+        log.debug("app {}, streamId {}, regist {}", app,streamId, regist);
 
         if(regist){
             Optional.ofNullable(registHandler.remove(streamId)).ifPresent((handler)->{
