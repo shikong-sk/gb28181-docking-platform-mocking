@@ -28,4 +28,7 @@ public class ModifyDeviceDTO {
 
     @Schema(description = "是否启用")
     private Boolean enable = true;
+
+    @Schema(description = "实时视频流地址")
+    private String liveStream;
 }
