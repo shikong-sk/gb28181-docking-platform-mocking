@@ -13,12 +13,9 @@ import cn.skcks.docking.gb28181.mocking.service.device.DeviceProxyService;
 import cn.skcks.docking.gb28181.mocking.service.device.DeviceService;
 import cn.skcks.docking.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.sdp.GB28181SDPBuilder;
+import cn.skcks.docking.gb28181.sdp.media.MediaStreamMode;
 import cn.skcks.docking.gb28181.sdp.parser.GB28181DescriptionParser;
-import gov.nist.core.Separators;
-import gov.nist.javax.sdp.SessionDescriptionImpl;
 import gov.nist.javax.sdp.TimeDescriptionImpl;
-import gov.nist.javax.sdp.fields.AttributeField;
-import gov.nist.javax.sdp.fields.ConnectionField;
 import gov.nist.javax.sdp.fields.TimeField;
 import gov.nist.javax.sip.message.SIPRequest;
 import jakarta.annotation.PostConstruct;
@@ -32,7 +29,6 @@ import javax.sdp.*;
 import javax.sip.RequestEvent;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.EventObject;
 import java.util.Vector;
@@ -99,8 +95,8 @@ public class InviteRequestProcessor implements MessageProcessor {
                     log.info("点播/回放请求");
                     if (StringUtils.equalsIgnoreCase(type, "Play")) {
                         // 暂不支持实时
-                        sender.sendResponse(senderIp, transport, unsupported(request));
-                        // play(request, device, gb28181Description, (MediaDescription) item);
+//                        sender.sendResponse(senderIp, transport, unsupported(request));
+                        play(request, device, gb28181Description, (MediaDescription) item);
                     } else {
                         playback(request, device, gb28181Description, (MediaDescription) item);
                     }
@@ -193,33 +189,16 @@ public class InviteRequestProcessor implements MessageProcessor {
             return;
         }
 
-        SdpFactory sdpFactory = SdpFactory.getInstance();
-        SessionDescriptionImpl sessionDescription = new SessionDescriptionImpl();
-        GB28181Description description = new GB28181Description(sessionDescription);
-        description.setVersion(sdpFactory.createVersion(0));
-        // 目前只配置 ipv4
-        description.setOrigin(sdpFactory.createOrigin(channelId, 0, 0, ConnectionField.IN, Connection.IP4, senderIp));
-        description.setSessionName(gb28181Description.getSessionName());
-        description.setConnection(sdpFactory.createConnection(ConnectionField.IN, Connection.IP4, senderIp));
-        TimeField respTime = new TimeField();
-        respTime.setZero();
-        TimeDescription timeDescription = SdpFactory.getInstance().createTimeDescription(respTime);
-        description.setTimeDescriptions(new Vector<>() {{
-            add(timeDescription);
-        }});
-        String[] mediaTypeCodes = new String[]{"98","96"};
-        String protocol = ((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol();
-        MediaDescription respMediaDescription = SdpFactory.getInstance().createMediaDescription("video", port, 0,  StringUtils.isBlank(protocol)?SdpConstants.RTP_AVP:protocol, mediaTypeCodes);
-        Arrays.stream(mediaTypeCodes).forEach((k)->{
-            String v = GB28181SDPBuilder.RTPMAP.get(k);
-            respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute(SdpConstants.RTPMAP, StringUtils.joinWith(Separators.SP,k,v)));
-        });
-        respMediaDescription.addAttribute((AttributeField) SdpFactory.getInstance().createAttribute("sendonly", null));
+        GB28181SDPBuilder.Action action = isDownload ? GB28181SDPBuilder.Action.DOWNLOAD : GB28181SDPBuilder.Action.PLAY_BACK;
+        TimeField timeField = new TimeField();
+        timeField.setZero();
+        GB28181Description sdp = GB28181SDPBuilder.Sender.build(action,
+                device.getGbDeviceId(),
+                channelId, Connection.IP4, address, port,
+                gb28181Description.getSsrcField().getSsrc(),
+                MediaStreamMode.of(((MediaDescription) gb28181Description.getMediaDescriptions(true).get(0)).getMedia().getProtocol()),
+                SdpFactory.getInstance().createTimeDescription(timeField));
 
-        description.setMediaDescriptions(new Vector<>(){{
-            add(respMediaDescription);
-        }});
-        description.setSsrcField(gb28181Description.getSsrcField());
         String ssrc = gb28181Description.getSsrcField().getSsrc();
         String callId = request.getCallId().getCallId();
         String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
@@ -239,7 +218,7 @@ public class InviteRequestProcessor implements MessageProcessor {
 
         scheduledExecutorService.schedule(()->{
             // 发送 sdp 响应
-            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, description));
+            sender.sendResponse(senderIp, transport, (ignore, ignore2, ignore3) -> SipResponseBuilder.responseSdp(request, sdp));
         }, 1,TimeUnit.SECONDS);
     }
 
