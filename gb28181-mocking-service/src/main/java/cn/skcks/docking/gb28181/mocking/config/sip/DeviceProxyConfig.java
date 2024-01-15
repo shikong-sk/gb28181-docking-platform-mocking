@@ -21,5 +21,5 @@ public class DeviceProxyConfig {
     /**
      * 代理该时间段内的历史视频查询请求
      */
-    private Duration proxyTimeRange = Duration.ofMinutes(3);
+    private Duration proxyTimeRange = Duration.ofMinutes(5);
 }
