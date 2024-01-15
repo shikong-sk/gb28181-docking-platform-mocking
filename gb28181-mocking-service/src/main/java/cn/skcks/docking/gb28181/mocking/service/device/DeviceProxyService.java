@@ -132,11 +132,11 @@ public class DeviceProxyService {
         return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/live/" + callId;
     }
 
-    private Flow.Subscriber<SIPRequest> ffmpegTask(ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
+    private Flow.Subscriber<SIPRequest> ffmpegTask(SIPRequest request,ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
         Optional.ofNullable(tasks.get(callId)).ifPresent(task->{
             task.getWatchdog().destroyProcess();
         });
-        Flow.Subscriber<SIPRequest> subscriber = ffmpegByeSubscriber(key, device, tasks);
+        Flow.Subscriber<SIPRequest> subscriber = ffmpegByeSubscriber(request, key, device, tasks);
         subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         int num = taskNum.incrementAndGet();
         log.info("当前任务数 {}", num);
@@ -145,7 +145,7 @@ public class DeviceProxyService {
 
     public TaskProcessor playbackTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(callbackTask, callId, key, device);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -156,6 +156,7 @@ public class DeviceProxyService {
                 executeResultHandler.waitFor();
             } catch (Exception e) {
                 schedule.cancel(true);
+                sendBye(request,device,"");
                 throw new RuntimeException(e);
             }
         };
@@ -163,7 +164,7 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(downloadTask, callId, key, device);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -174,6 +175,7 @@ public class DeviceProxyService {
                 executeResultHandler.waitFor();
             } catch (Exception e) {
                 schedule.cancel(true);
+                sendBye(request,device,"");
                 throw new RuntimeException(e);
             }
         };
@@ -189,8 +191,9 @@ public class DeviceProxyService {
         }, 200, TimeUnit.MILLISECONDS);
     }
 
-    public Flow.Subscriber<SIPRequest> ffmpegByeSubscriber(String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
+    public Flow.Subscriber<SIPRequest> ffmpegByeSubscriber(SIPRequest inviteRequest,String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
         return new Flow.Subscriber<>() {
+            SIPRequest request;
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
                 log.info("订阅 bye {}", key);
@@ -199,10 +202,7 @@ public class DeviceProxyService {
 
             @Override
             public void onNext(SIPRequest item) {
-                String ip = item.getLocalAddress().getHostAddress();
-                String transPort = item.getTopmostViaHeader().getTransport();
-                sender.sendResponse(ip, transPort, ((provider, ip1, port) ->
-                        SipResponseBuilder.response(item, Response.OK, "OK")));
+                request = item;
                 onComplete();
             }
 
@@ -214,6 +214,15 @@ public class DeviceProxyService {
             @Override
             public void onComplete() {
                 log.info("bye 订阅结束 {}", key);
+                if(request == null){
+                    sendBye(inviteRequest,device,"");
+                } else {
+                    String ip = request.getLocalAddress().getHostAddress();
+                    String transPort = request.getTopmostViaHeader().getTransport();
+                    sender.sendResponse(ip, transPort, ((provider, ip1, port) ->
+                            SipResponseBuilder.response(request, Response.OK, "OK")));
+                }
+
                 subscribe.getByeSubscribe().delPublisher(key);
                 Optional.ofNullable(task.get(device.getDeviceCode())).ifPresent(task -> {
                     task.getWatchdog().destroyProcess();
@@ -223,8 +232,9 @@ public class DeviceProxyService {
         };
     }
 
-    public Flow.Subscriber<SIPRequest> zlmByeSubscriber(String key, MockingDevice device){
+    public Flow.Subscriber<SIPRequest> zlmByeSubscriber(String key, SIPRequest inviteRequest,MockingDevice device){
         return new Flow.Subscriber<>() {
+            private SIPRequest request;
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
                 log.info("订阅 bye {}", key);
@@ -233,10 +243,7 @@ public class DeviceProxyService {
 
             @Override
             public void onNext(SIPRequest item) {
-                String ip = item.getLocalAddress().getHostAddress();
-                String transPort = item.getTopmostViaHeader().getTransport();
-                sender.sendResponse(ip, transPort, ((provider, ip1, port) ->
-                        SipResponseBuilder.response(item, Response.OK, "OK")));
+                request = item;
                 subscribe.getByeSubscribe().delPublisher(key);
             }
 
@@ -246,6 +253,15 @@ public class DeviceProxyService {
             @Override
             public void onComplete() {
                 log.info("bye 订阅结束 {}", key);
+                if(request == null){
+                    sendBye(inviteRequest,device,"");
+                } else {
+                    String ip = request.getLocalAddress().getHostAddress();
+                    String transPort = request.getTopmostViaHeader().getTransport();
+                    sender.sendResponse(ip, transPort, ((provider, ip1, port) ->
+                            SipResponseBuilder.response(request, Response.OK, "OK")));
+                }
+
                 String cacheKey = CacheUtil.getKey("INVITE", "PROXY", key);
                 String proxyKey = RedisUtil.StringOps.get(cacheKey);
                 log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
@@ -323,7 +339,7 @@ public class DeviceProxyService {
             });
 
             // zlmStreamChangeHookService.getUnregistHandler().put(callId,()-> sendBye(request,device,key));
-            Flow.Subscriber<SIPRequest> subscriber = zlmByeSubscriber(key,device);
+            Flow.Subscriber<SIPRequest> subscriber = zlmByeSubscriber(key,request,device);
             subscribe.getByeSubscribe().addPublisher(key);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         } catch (Exception e) {

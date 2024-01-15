@@ -39,6 +39,11 @@ public class SipStarter implements SmartLifecycle {
     }
 
     @Override
+    public int getPhase() {
+        return 0;
+    }
+
+    @Override
     public boolean isRunning() {
         return isRunning;
     }

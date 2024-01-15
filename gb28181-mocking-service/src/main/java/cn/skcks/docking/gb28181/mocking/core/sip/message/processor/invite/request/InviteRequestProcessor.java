@@ -25,12 +25,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 import javax.sdp.*;
 import javax.sip.RequestEvent;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
+import java.time.Duration;
 import java.util.Date;
 import java.util.EventObject;
 import java.util.Vector;
@@ -40,7 +42,7 @@ import java.util.concurrent.*;
 @RequiredArgsConstructor
 @Component
 @SuppressWarnings("Duplicates")
-public class InviteRequestProcessor implements MessageProcessor {
+public class InviteRequestProcessor implements MessageProcessor, SmartLifecycle {
     private final SipListener sipListener;
 
     private final SipSender sender;
@@ -54,6 +56,8 @@ public class InviteRequestProcessor implements MessageProcessor {
     private final FfmpegConfig ffmpegConfig;
 
     private final DeviceProxyConfig deviceProxyConfig;
+
+    private boolean running;
 
     @PostConstruct
     @Override
@@ -99,8 +103,6 @@ public class InviteRequestProcessor implements MessageProcessor {
                 if (StringUtils.equalsAnyIgnoreCase(type, "Play", "PlayBack")) {
                     log.info("点播/回放请求");
                     if (StringUtils.equalsIgnoreCase(type, "Play")) {
-                        // 暂不支持实时
-//                        sender.sendResponse(senderIp, transport, unsupported(request));
                         play(request, device, gb28181Description, (MediaDescription) item);
                     } else {
                         playback(request, device, gb28181Description, (MediaDescription) item);
@@ -367,5 +369,30 @@ public class InviteRequestProcessor implements MessageProcessor {
                 scheduledFuture[0].cancel(true);
             }
         };
+    }
+
+    @Override
+    public void start() {
+        running = true;
+    }
+
+    @SneakyThrows
+    @Override
+    public void stop() {
+        subscribe.getAckSubscribe().close();
+        subscribe.getByeSubscribe().close();
+        log.info("关闭所有 ack 和 bye 订阅 并 关闭所有推流");
+        Thread.sleep(Duration.ofSeconds(5).toMillis());
+        running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
+    }
+
+    @Override
+    public int getPhase() {
+        return Integer.MAX_VALUE;
     }
 }
