@@ -99,7 +99,7 @@ ffmpeg-support:
     input: -re -i
     #output: -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv #rtp_mpegts
     #output: -vcodec libx264 -acodec aac -vf scale=640:-1 -f rtp_mpegts # -rtsp_transport tcp
-    output: -c:v copy -c:a copy -f flv
+    output: -c:v copy -c:a copy -flvflags no_duration_filesize -f flv
     #download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
     download: -i
     download-speed: 4.0
