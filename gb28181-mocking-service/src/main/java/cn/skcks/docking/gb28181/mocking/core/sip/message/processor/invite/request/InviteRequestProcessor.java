@@ -1,8 +1,11 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.message.processor.invite.request;
 
+import cn.hutool.core.date.DateUnit;
+import cn.hutool.core.date.DateUtil;
 import cn.skcks.docking.gb28181.core.sip.listener.SipListener;
 import cn.skcks.docking.gb28181.core.sip.message.processor.MessageProcessor;
 import cn.skcks.docking.gb28181.core.sip.message.subscribe.GenericSubscribe;
+import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
@@ -49,6 +52,8 @@ public class InviteRequestProcessor implements MessageProcessor {
     private final SipSubscribe subscribe;
 
     private final FfmpegConfig ffmpegConfig;
+
+    private final DeviceProxyConfig deviceProxyConfig;
 
     @PostConstruct
     @Override
@@ -124,6 +129,11 @@ public class InviteRequestProcessor implements MessageProcessor {
     private SipSender.SendResponse unsupported(SIPRequest request) {
         return (provider, ip, port) -> SipResponseBuilder.response(request, Response.UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported Media Type");
+    }
+
+    private SipSender.SendResponse forbidden(SIPRequest request) {
+        return (provider, ip, port) -> SipResponseBuilder.response(request, Response.FORBIDDEN,
+                "Only support playback with " + deviceProxyConfig.getProxyTimeRange().getSeconds() + " secs video");
     }
 
     /**
@@ -209,6 +219,19 @@ public class InviteRequestProcessor implements MessageProcessor {
         Date start = new Date(time.getStartTime() * 1000);
         Date stop = new Date(time.getStopTime() * 1000);
         log.info("{} ~ {}", start, stop);
+
+        String senderIp = request.getLocalAddress().getHostAddress();
+        String transport = request.getTopmostViaHeader().getTransport();
+        if(deviceProxyConfig.getProxyVideoInTimeRange()){
+            long between = DateUtil.between(start, stop, DateUnit.SECOND);
+            long seconds = deviceProxyConfig.getProxyTimeRange().getSeconds();
+            if( between > seconds ){
+                log.info("请求回放/下载时长 {} 大于所设定 支持时长范围 {}",between, seconds);
+                sender.sendResponse(senderIp, transport, forbidden(request));
+                return;
+            }
+        }
+
         String channelId = gb28181Description.getOrigin().getUsername();
         log.info("通道id: {}", channelId);
         String address = gb28181Description.getOrigin().getAddress();
@@ -216,9 +239,6 @@ public class InviteRequestProcessor implements MessageProcessor {
         Media media = mediaDescription.getMedia();
         int port = media.getMediaPort();
         log.info("目标端口号: {}", port);
-
-        String senderIp = request.getLocalAddress().getHostAddress();
-        String transport = request.getTopmostViaHeader().getTransport();
         int taskNum = DeviceProxyService.getTaskNum().get();
         log.info("当前任务数 {}", taskNum);
         if(ffmpegConfig.getTask().getMax() > 0 && taskNum >= ffmpegConfig.getTask().getMax()){
