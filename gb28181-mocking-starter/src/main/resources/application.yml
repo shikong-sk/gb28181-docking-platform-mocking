@@ -74,6 +74,8 @@ media:
     port: 1937
 proxy:
   device:
+    # 代理的视频接口地址, 用于获取历史视频
+    # 参数 device_id, begin_time, end_time
     url: http://192.168.2.3:18183
 ffmpeg-support:
   task:

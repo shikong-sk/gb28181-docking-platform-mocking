@@ -80,6 +80,8 @@ media:
     port: 1936
 proxy:
   device:
+    # 代理的视频接口地址, 用于获取历史视频
+    # 参数 device_id, begin_time, end_time
     url: http://10.10.10.20:18186
 ffmpeg-support:
   task:
