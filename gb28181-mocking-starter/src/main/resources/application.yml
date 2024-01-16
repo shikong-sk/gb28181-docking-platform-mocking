@@ -78,6 +78,7 @@ proxy:
     # 参数 device_id, begin_time, end_time
     #url: http://192.168.2.3:18183
     url: http://10.10.10.20:18183
+    #url: http://127.0.0.1:18183
 ffmpeg-support:
   task:
     # 最大同时推流任务数, <= 0 时不做限制
@@ -112,6 +113,8 @@ ffmpeg-support:
     download: false
     input: false
     output: false
+  # 是否通过 zlm 调用 ffmpeg
+  use-zlm-ffmpeg: false
 
 # [可选] 日志配置, 一般不需要改
 logging:

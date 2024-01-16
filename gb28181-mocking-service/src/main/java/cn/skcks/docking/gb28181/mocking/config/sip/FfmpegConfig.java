@@ -11,6 +11,8 @@ public class FfmpegConfig {
     private String ffmpeg;
     private String ffprobe;
 
+    private Boolean useZlmFfmpeg = false;
+
     private Rtp rtp;
 
     @Data

@@ -324,8 +324,12 @@ public class InviteRequestProcessor implements MessageProcessor, SmartLifecycle 
             @Override
             public void onNext(SIPRequest item) {
                 log.info("收到 ack 确认请求: {} 开始推流",key);
-                // RTP 推流
-                deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port,ssrc, deviceProxyService.playbackTask());
+                if(ffmpegConfig.getUseZlmFfmpeg()){
+                    deviceProxyService.pullStreamByZlmFfmpegSource(request,callId,device, start, stop, address, port,ssrc);
+                } else {
+                    // RTP 推流
+                    deviceProxyService.proxyVideo2Rtp(request, callId, device, start, stop, address, port,ssrc, deviceProxyService.playbackTask());
+                }
                 onComplete();
             }
 
