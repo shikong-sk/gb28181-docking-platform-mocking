@@ -34,7 +34,7 @@ public class FfmpegSupportService {
     public Executor pushDownload2Rtp(String input, String output, long time, TimeUnit unit, ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
-        String downloadSpeed = StringUtils.joinWith(" ","-filter:v", MessageFormat.format("\"setpts={0}*PTS\"",rtp.getDownloadSpeed()));
+        String downloadSpeed = StringUtils.joinWith(" ","-filter:v", MessageFormat.format("\"setpts=1/{0}*PTS\"",rtp.getDownloadSpeed()));
         String inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input, downloadSpeed);
         log.info("视频下载参数 {}", inputParam);
 
