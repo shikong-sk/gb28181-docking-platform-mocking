@@ -15,6 +15,10 @@ public class DeviceProxyConfig {
      */
     private String url;
     /**
+     * 是否使用下载的方式 拉取历史回放
+     */
+    private Boolean useDownloadToPlayback = true;
+    /**
      * 是否只通过代理拉取指定时间范围内的视频查询请求
      */
     private Boolean proxyVideoInTimeRange = true;

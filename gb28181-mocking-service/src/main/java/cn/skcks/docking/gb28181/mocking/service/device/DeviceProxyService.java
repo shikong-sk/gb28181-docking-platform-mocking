@@ -356,6 +356,7 @@ public class DeviceProxyService {
         LocalDateTime fixedBeginTime = LocalDateTimeUtil.of(startTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)).minus(zlmHookConfig.getFixed());
         map.put("begin_time",DateUtil.format(fixedBeginTime, DatePattern.PURE_DATETIME_PATTERN) );
         map.put("end_time", DateUtil.format(LocalDateTimeUtil.of(endTime.toInstant(), ZoneId.of(GB28181Constant.TIME_ZONE)), DatePattern.PURE_DATETIME_PATTERN));
+        map.put("useDownload", String.valueOf(proxyConfig.getUseDownloadToPlayback()));
         String query = URLUtil.buildQuery(map, StandardCharsets.UTF_8);
         fromUrl = StringUtils.joinWith("?", fromUrl, query);
         log.info("设备: {} 视频 url: {}", deviceCode, fromUrl);
