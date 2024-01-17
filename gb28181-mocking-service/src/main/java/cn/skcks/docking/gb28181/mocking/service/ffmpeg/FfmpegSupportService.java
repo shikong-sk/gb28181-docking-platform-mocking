@@ -21,10 +21,10 @@ public class FfmpegSupportService {
     public Executor pushToRtp(String input, String output, long time, TimeUnit unit,ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
-        String inputParam = debug.getInput() ? rtp.getInput() : StringUtils.joinWith(" ", rtp.getInput(), input);
+        String inputParam = debug.getInput() ? rtp.getInput() : StringUtils.joinWith(" ", rtp.getInput(), "\"" + input + "\"");
         log.info("视频输入参数 {}", inputParam);
 
-        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);
+        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), "\"" + output + "\"");
         log.info("视频输出参数 {}", outputParam);
 
         return ffmpegExecutor(inputParam, outputParam, time, unit, resultHandler);

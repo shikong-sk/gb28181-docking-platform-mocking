@@ -77,8 +77,8 @@ proxy:
     # 代理的视频接口地址, 用于获取历史视频
     # 参数 device_id, begin_time, end_time
     #url: http://192.168.2.3:18183
-#    url: http://10.10.10.20:18183
-    url: http://192.168.1.241:28181
+    url: http://10.10.10.20:18183
+    #url: http://192.168.1.241:28181
 ffmpeg-support:
   task:
     # 最大同时推流任务数, <= 0 时不做限制
@@ -98,14 +98,14 @@ ffmpeg-support:
   rtp:
     #input: -thread_queue_size 128 -re -i http://192.168.3.12:5081/live/test.live.flv
     #input: -re -i
-    input: -re -i
+    input:  -rw_timeout 60000000 -re -i
     #output: -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv #rtp_mpegts
     #output: -vcodec libx264 -acodec aac -vf scale=640:-1 -f rtp_mpegts # -rtsp_transport tcp
     # 拉取4倍速流文件 还原速率
     #output: -filter:v "setpts=4.0*PTS" -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
     # 下载 正常速率
     #output: -r 30 -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
-    output: -r 30 -vcodec libx264 -acodec aac -filter:v "setpts=1*PTS" -preset ultrafast -flvflags no_duration_filesize -f flv
+    output: -r 30 -vcodec libx264 -acodec aac -filter:v "setpts=1*PTS" -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
     #download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
     download: -i
     download-speed: 4.0
