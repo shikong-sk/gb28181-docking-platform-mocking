@@ -27,6 +27,7 @@ public class ZlmInitService {
         ServerConfig config = data.get(0);
         HookConfig hook = config.getHook();
         hook.setOnStreamChanged(zlmHookConfig.getHook() + "/on_stream_changed");
+        hook.setOnStreamNoneReader(zlmHookConfig.getHook() + "/on_stream_none_reader");
         zlmMediaService.setServerConfig(config);
     }
 }

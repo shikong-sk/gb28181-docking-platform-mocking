@@ -76,8 +76,8 @@ proxy:
   device:
     # 代理的视频接口地址, 用于获取历史视频
     # 参数 device_id, begin_time, end_time
-    #url: http://192.168.2.3:18183
-    url: http://10.10.10.20:18183
+    url: http://192.168.2.3:18183
+    #url: http://10.10.10.20:18183
     #url: http://192.168.1.241:28181
 ffmpeg-support:
   task:
@@ -105,10 +105,11 @@ ffmpeg-support:
     #output: -filter:v "setpts=4.0*PTS" -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
     # 下载 正常速率
     #output: -r 30 -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
-    output: -r 30 -vcodec libx264 -acodec aac -filter:v "setpts=1*PTS" -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
+    output: -c:v copy -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
+    #output: -r 30 -vcodec libx264 -acodec aac -filter:v "setpts=1*PTS" -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
     #download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
     download: -i
-    download-speed: 4.0
+    download-speed: 0
   debug:
     download: false
     input: false

@@ -32,6 +32,7 @@ import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamChangeHookService;
+import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamNoneReaderHookService;
 import cn.skcks.docking.gb28181.sdp.GB28181Description;
 import cn.skcks.docking.gb28181.sdp.parser.GB28181DescriptionParser;
 import cn.skcks.docking.gb28181.sip.method.invite.response.InviteResponseBuilder;
@@ -91,6 +92,8 @@ public class DeviceProxyService {
     private final String DEFAULT_ZLM_APP = "live";
     private final String ZLM_FFMPEG_PROXY_APP = "ffmpeg_proxy";
 
+    private final ZlmStreamNoneReaderHookService zlmStreamNoneReaderHookService;
+
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public interface TaskProcessor {
@@ -133,7 +136,10 @@ public class DeviceProxyService {
                 throw new RuntimeException(e);
             }
         });
-        zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
+//        zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
+//            sendBye(request,device,key);
+//        });
+        zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             sendBye(request,device,key);
         });
         return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + DEFAULT_ZLM_APP +"/" + callId;
@@ -492,19 +498,28 @@ public class DeviceProxyService {
         private void mediaStatus(){
             int num = taskNum.decrementAndGet();
             log.info("当前任务数 {}", num);
-            // 等待zlm推流结束, 如果 ffmpeg 结束 30秒 未能推流完成就主动结束
+            // 等待zlm推流结束, 如果 ffmpeg 结束 3分钟内 未能推流完成就主动结束
             scheduledExecutorService.schedule(()->{
                 CallIdHeader requestCallId = request.getCallId();
                 String callId = requestCallId.getCallId();
                 callbackTask.remove(callId);
                 Optional<ZlmStreamChangeHookService.ZlmStreamChangeHookHandler> optionalZlmStreamChangeHookHandler =
                         Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId));
+                Optional<ZlmStreamNoneReaderHookService.ZlmStreamNoneReaderHookHandler> optionalZlmStreamNoneReaderHandler =
+                        Optional.ofNullable(zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).remove(callId));
                 // 如果取消注册已完成就直接结束, 否则发送 bye请求 结束
-                if(optionalZlmStreamChangeHookHandler.isEmpty()){
+                if(optionalZlmStreamChangeHookHandler.isEmpty() && optionalZlmStreamNoneReaderHandler.isEmpty()){
                     return;
                 }
+
+                optionalZlmStreamChangeHookHandler.ifPresent(handler -> {
+                    log.warn("流改变事件未结束 ZlmStreamChange {} {}, 强制结束", DEFAULT_ZLM_APP,callId);
+                });
+                optionalZlmStreamNoneReaderHandler.ifPresent(handler -> {
+                    log.warn("流无人观看事件未结束 ZlmStreamNoneReader {} {}, 强制结束", DEFAULT_ZLM_APP, callId);
+                });
                 sendBye(request,device,key);
-            },30,TimeUnit.SECONDS);
+            },3,TimeUnit.MINUTES);
         }
 
         public boolean hasResult() {

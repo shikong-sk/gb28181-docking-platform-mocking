@@ -34,8 +34,14 @@ public class FfmpegSupportService {
     public Executor pushDownload2Rtp(String input, String output, long time, TimeUnit unit, ExecuteResultHandler resultHandler){
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         FfmpegConfig.Debug debug = ffmpegConfig.getDebug();
-        String downloadSpeed = StringUtils.joinWith(" ","-filter:v", MessageFormat.format("\"setpts=1/{0}*PTS\"",rtp.getDownloadSpeed()));
-        String inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input, downloadSpeed);
+        String inputParam;
+        if(rtp.getDownloadSpeed() > 0){
+            String downloadSpeed = StringUtils.joinWith(" ","-filter:v", MessageFormat.format("\"setpts=1/{0}*PTS\"",rtp.getDownloadSpeed()));
+            inputParam = debug.getDownload()? rtp.getDownload() : StringUtils.joinWith(" ", rtp.getDownload(), input, downloadSpeed);
+        } else {
+            inputParam = debug.getDownload()? rtp.getDownload(): StringUtils.joinWith(" ", rtp.getDownload(), input);
+        }
+
         log.info("视频下载参数 {}", inputParam);
 
         String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);

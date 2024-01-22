@@ -38,7 +38,7 @@ public class ZlmStreamChangeHookService {
     }
 
     public void processEvent(String app,String streamId, Boolean regist){
-        log.debug("app {}, streamId {}, regist {}", app,streamId, regist);
+        log.debug("流改变事件: app {}, streamId {}, regist {}", app,streamId, regist);
 
         if(regist){
             ConcurrentMap<String, ZlmStreamChangeHookHandler> registHandler = getRegistHandler(app);
