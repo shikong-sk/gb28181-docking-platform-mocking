@@ -170,7 +170,7 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
-                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule,request, device, key);
                 Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 callbackTask.put(device.getDeviceCode(), executor);
@@ -189,7 +189,7 @@ public class DeviceProxyService {
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
-                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
                 Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 downloadTask.put(device.getDeviceCode(), executor);
@@ -524,11 +524,14 @@ public class DeviceProxyService {
         @Setter(AccessLevel.PRIVATE)
         private boolean hasResult = false;
 
+        private final ScheduledFuture<?> tryingSchedule;
         private final SIPRequest request;
         private final MockingDevice device;
         private final String key;
 
         private void close(){
+            tryingSchedule.cancel(true);
+
             CallIdHeader requestCallId = request.getCallId();
             String callId = requestCallId.getCallId();
             callbackTask.remove(callId);
@@ -575,18 +578,16 @@ public class DeviceProxyService {
             mediaStatus();
         }
 
-        @SneakyThrows
         @Override
         public void onProcessFailed(ExecuteException e) {
             hasResult = true;
             log.error("ffmpeg 执行失败", e);
             close();
-            throw e;
         }
     }
 
-    public FfmpegExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
-        return new FfmpegExecuteResultHandler(request,device,key);
+    public FfmpegExecuteResultHandler mediaStatus(ScheduledFuture<?> tryingSchedule,SIPRequest request, MockingDevice device,String key){
+        return new FfmpegExecuteResultHandler(tryingSchedule,request,device,key);
     }
 
     /**
