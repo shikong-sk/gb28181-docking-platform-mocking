@@ -162,8 +162,8 @@ public class DeviceProxyService {
 
     public TaskProcessor playbackTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
@@ -181,8 +181,8 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             ScheduledFuture<?> schedule = trying(request);
+            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
                 String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
@@ -199,13 +199,13 @@ public class DeviceProxyService {
     }
 
     private ScheduledFuture<?> trying(SIPRequest request){
-        return scheduledExecutorService.schedule(() -> {
+        return scheduledExecutorService.scheduleAtFixedRate(() -> {
             InviteResponseBuilder inviteRequestBuilder = InviteResponseBuilder.builder().build();
             Response tryingInviteResponse = inviteRequestBuilder.createTryingInviteResponse(request);
             String ip = request.getLocalAddress().getHostAddress();
             String transPort = request.getTopmostViaHeader().getTransport();
             sender.sendResponse(ip, transPort, ((provider, ip1, port) -> tryingInviteResponse));
-        }, 200, TimeUnit.MILLISECONDS);
+        }, 0,1, TimeUnit.SECONDS);
     }
 
     public Flow.Subscriber<SIPRequest> ffmpegByeSubscriber(SIPRequest inviteRequest,String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
