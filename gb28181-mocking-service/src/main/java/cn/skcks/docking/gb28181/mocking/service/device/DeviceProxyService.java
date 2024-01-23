@@ -575,11 +575,13 @@ public class DeviceProxyService {
             mediaStatus();
         }
 
+        @SneakyThrows
         @Override
         public void onProcessFailed(ExecuteException e) {
             hasResult = true;
             log.error("ffmpeg 执行失败", e);
             close();
+            throw e;
         }
     }
 
