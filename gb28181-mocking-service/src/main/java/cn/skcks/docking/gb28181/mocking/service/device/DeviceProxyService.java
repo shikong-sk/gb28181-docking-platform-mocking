@@ -477,6 +477,9 @@ public class DeviceProxyService {
             subscribe.getByeSubscribe().addPublisher(key);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         } catch (Exception e) {
+            // 停止发送 trying
+            schedule.cancel(true);
+
             log.error("zlm 代理拉流失败",e);
             sendBye(request, device, "");
         }
