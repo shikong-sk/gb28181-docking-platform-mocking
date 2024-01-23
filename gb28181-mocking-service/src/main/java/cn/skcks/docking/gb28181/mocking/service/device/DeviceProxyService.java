@@ -98,15 +98,14 @@ public class DeviceProxyService {
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public interface TaskProcessor {
-        void process(SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
+        void process(SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
     }
 
-    private String requestZlmPushStream(ScheduledFuture<?> schedule, SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
+    private String requestZlmPushStream(ScheduledFuture<?> schedule, Runnable sendOkResponse, SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
         GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
         MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
         boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
         zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            schedule.cancel(false);
             Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
                     .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
                     .retryIfException()
@@ -136,6 +135,11 @@ public class DeviceProxyService {
                         .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                 throw new RuntimeException(e);
             }
+
+            // 停止发送 trying
+            schedule.cancel(false);
+            // 响应 sdp ok
+            sendOkResponse.run();
         });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             StopSendRtp stopSendRtp = new StopSendRtp();
@@ -161,11 +165,11 @@ public class DeviceProxyService {
     }
 
     public TaskProcessor playbackTask(){
-        return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
+        return (SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             try {
-                String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                 Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
@@ -180,11 +184,11 @@ public class DeviceProxyService {
     }
 
     public TaskProcessor downloadTask(){
-        return (SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
+        return (SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
-                String zlmRtpUrl = requestZlmPushStream(schedule, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                 Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
@@ -399,7 +403,8 @@ public class DeviceProxyService {
     }
 
     @SneakyThrows
-    public void pullLiveStream2Rtp(SIPRequest request,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
+    public void pullLiveStream2Rtp(SIPRequest request,Runnable sendOkResponse,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
+        ScheduledFuture<?> schedule = trying(request);
         Retryer<ZlmResponse<AddStreamProxyResp>> retryer = RetryerBuilder.<ZlmResponse<AddStreamProxyResp>>newBuilder()
                 .retryIfResult(resp -> {
                     log.info("resp {}", resp);
@@ -452,6 +457,11 @@ public class DeviceProxyService {
                     log.error("zlm rtp 推流失败",e);
                     sendBye(request, device, "");
                 }
+
+                // 停止发送 trying
+                schedule.cancel(false);
+                // 响应 sdp ok
+                sendOkResponse.run();
             });
 
             zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()-> {
@@ -487,12 +497,12 @@ public class DeviceProxyService {
         return fromUrl;
     }
 
-    public void proxyVideo2Rtp(SIPRequest request,String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, String ssrc, TaskProcessor taskProcessor) {
+    public void proxyVideo2Rtp(SIPRequest request,Runnable sendOkResponse, String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, String ssrc, TaskProcessor taskProcessor) {
         String fromUrl = getProxyUrl(device, startTime, endTime);
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         subscribe.getByeSubscribe().addPublisher(key);
         long time = DateUtil.between(startTime, endTime, DateUnit.SECOND);
-        taskProcessor.process(request, callId,fromUrl,rtpAddr, rtpPort,device,key,time, ssrc);
+        taskProcessor.process(request, sendOkResponse, callId,fromUrl,rtpAddr, rtpPort,device,key,time, ssrc);
     }
 
     @SneakyThrows
