@@ -581,6 +581,8 @@ public class DeviceProxyService {
         @Override
         public void onProcessFailed(ExecuteException e) {
             hasResult = true;
+            int num = taskNum.decrementAndGet();
+            log.info("当前任务数 {}", num);
             log.error("ffmpeg 执行失败", e);
             close();
         }
