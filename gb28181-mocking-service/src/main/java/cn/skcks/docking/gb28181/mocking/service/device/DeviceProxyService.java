@@ -404,6 +404,10 @@ public class DeviceProxyService {
 
     @SneakyThrows
     public void pullLiveStream2Rtp(SIPRequest request,Runnable sendOkResponse,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
+        String liveCache = CacheUtil.getKey("INVITE", "LIVE", device.getGbDeviceId());
+        // 关闭已存在的实时流 bye 订阅（如果存在）
+        subscribe.getByeSubscribe().delPublisher(liveCache);
+
         ScheduledFuture<?> schedule = trying(request);
         Retryer<ZlmResponse<AddStreamProxyResp>> retryer = RetryerBuilder.<ZlmResponse<AddStreamProxyResp>>newBuilder()
                 .retryIfResult(resp -> {
@@ -474,6 +478,8 @@ public class DeviceProxyService {
             });
 
             Flow.Subscriber<SIPRequest> subscriber = zlmByeSubscriber(key,request,device);
+            liveCache = CacheUtil.getKey("INVITE", "LIVE", device.getGbDeviceId());
+            RedisUtil.StringOps.set(liveCache, key);
             subscribe.getByeSubscribe().addPublisher(key);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         } catch (Exception e) {
