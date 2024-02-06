@@ -12,9 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -44,6 +44,8 @@ public class VideoCacheManager {
 
     @PostConstruct
     private void init(){
+        manager.setMaxTotal(100);
+        manager.setDefaultMaxPerRoute(100);
         manager.setDefaultConnectionConfig(
                 ConnectionConfig.custom()
                         .setConnectTimeout(5, TimeUnit.MINUTES)
@@ -100,19 +102,23 @@ public class VideoCacheManager {
                 FileChannel channel = outputStream.getChannel();
                 FileLock lock = channel.lock();
 
-                try (CloseableHttpClient client = HttpClients.custom().setConnectionManager(manager).build()) {
-                    HttpGet httpGet = new HttpGet(url);
-                    client.execute(httpGet, response -> {
-                        InputStream stream = response.getEntity().getContent();
-                        IoUtil.copy(stream,outputStream);
-                        return stream;
-                    });
-                    log.info("视频下载完成 => {}", file.getAbsolutePath());
-                    log.info("文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
-                    file.renameTo(realFile);
-                    lock.release();
-                    return JsonResponse.success(realFile.getAbsolutePath());
-                }
+                HttpClient client = HttpClients.custom()
+                        .setConnectionManager(manager)
+                        .setConnectionManagerShared(true)
+                        .build();
+
+                HttpGet httpGet = new HttpGet(url);
+                InputStream execute = client.execute(httpGet, response -> {
+                    InputStream stream = response.getEntity().getContent();
+                    IoUtil.copy(stream, outputStream);
+                    return stream;
+                });
+                execute.close();
+                log.info("视频下载完成 => {}", file.getAbsolutePath());
+                log.info("文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
+                file.renameTo(realFile);
+                lock.release();
+                return JsonResponse.success(realFile.getAbsolutePath());
             } catch (Exception e) {
                 log.error("视频下载失败 => {}", e.getMessage());
                 file.delete();
