@@ -5,6 +5,7 @@ import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.URLUtil;
+import cn.skcks.docking.gb28181.common.json.JsonResponse;
 import cn.skcks.docking.gb28181.common.redis.RedisUtil;
 import cn.skcks.docking.gb28181.common.xml.XmlUtils;
 import cn.skcks.docking.gb28181.core.sip.gb28181.cache.CacheUtil;
@@ -23,6 +24,7 @@ import cn.skcks.docking.gb28181.media.dto.rtp.StopSendRtp;
 import cn.skcks.docking.gb28181.media.dto.status.ResponseStatus;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
+import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtmpConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
@@ -30,6 +32,7 @@ import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.response.SipResponseBuilder;
 import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
+import cn.skcks.docking.gb28181.mocking.core.sip.service.VideoCacheManager;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamChangeHookService;
@@ -89,11 +92,14 @@ public class DeviceProxyService {
     private final ZlmMediaConfig zlmMediaConfig;
     private final ZlmStreamChangeHookService zlmStreamChangeHookService;
     private final ZlmRtmpConfig zlmRtmpConfig;
+    private final VideoCacheManager videoCacheManager;
 
     private final String DEFAULT_ZLM_APP = "live";
     private final String ZLM_FFMPEG_PROXY_APP = "ffmpeg_proxy";
 
     private final ZlmStreamNoneReaderHookService zlmStreamNoneReaderHookService;
+
+    private final FfmpegConfig ffmpegConfig;
 
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
@@ -491,7 +497,19 @@ public class DeviceProxyService {
         }
     }
 
+    @SneakyThrows
     private String getProxyUrl(MockingDevice device, Date startTime, Date endTime){
+        if(proxyConfig.getPreDownloadForRecordInfo().getEnable() && !ffmpegConfig.getUseZlmFfmpeg()){
+            CompletableFuture<JsonResponse<String>> task = videoCacheManager.get(device.getDeviceCode(), startTime, endTime);
+            if(task != null){
+                if(task.isDone()){
+                    String file = task.get().getData();
+                    log.info("本地视频已缓存, 将从本地缓存推流, 缓存文件 => {}", file);
+                    return file;
+                }
+            }
+        }
+
         String fromUrl = URLUtil.completeUrl(proxyConfig.getUrl(), "/video");
         HashMap<String, String> map = new HashMap<>(3);
         String deviceCode = device.getDeviceCode();
