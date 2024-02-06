@@ -54,6 +54,7 @@ public class VideoCacheManager {
         return StringUtils.joinWith("-", deviceCode, dateFormat(startTime), dateFormat(endTime));
     }
 
+    @Async(MockingExecutor.EXECUTOR_BEAN_NAME)
     public void addTask(String deviceCode, Date startTime, Date endTime){
         String name = fileName(deviceCode, startTime, endTime);
         if(tasks.get(name) != null){

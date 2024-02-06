@@ -37,6 +37,7 @@ chmod +x ./package-docker.sh
 docker run --name gb28181-mocking --rm \
   --log-opt max-size=1g \
   --network host \
+  -v `pwd`/record:/tmp/record \
   -v `pwd`/application.yml:/opt/gb28181-docking-platform-mocking/application.yml \
   skcks.cn/gb28181-docking-platform-mocking:0.1.0-SNAPSHOT
 ```
