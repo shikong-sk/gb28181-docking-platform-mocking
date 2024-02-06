@@ -1,6 +1,8 @@
 package cn.skcks.docking.gb28181.mocking.config.sip;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,4 +28,18 @@ public class DeviceProxyConfig {
      * 代理该时间段内的历史视频查询请求
      */
     private Duration proxyTimeRange = Duration.ofMinutes(5);
+
+    /**
+     * 预下载历史视频的配置
+     */
+    private PreDownloadForRecordInfo preDownloadForRecordInfo = new PreDownloadForRecordInfo();
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Data
+    public static class PreDownloadForRecordInfo {
+        private Boolean enable = true;
+        private Duration timeRange = Duration.ofMinutes(5);
+        private String cachePath = "./record";
+    }
 }

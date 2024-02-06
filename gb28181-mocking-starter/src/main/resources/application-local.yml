@@ -83,6 +83,13 @@ proxy:
     # 代理的视频接口地址, 用于获取历史视频
     # 参数 device_id, begin_time, end_time
     url: http://10.10.10.20:18186
+    use-download-to-playback: true
+    proxy-video-in-time-range: true
+    proxy-time-range: 5m
+    pre-download-for-record-info:
+      time-range: 5m
+      cache-path: ./record
+      enable: true
 ffmpeg-support:
   task:
     # 最大同时推流任务数, <= 0 时不做限制
