@@ -77,6 +77,7 @@ public class VideoCacheManager {
         return CompletableFuture.supplyAsync(()->{
             File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
             if(realFile.exists()){
+                log.info("文件 {} 已缓存, 直接返回", realFile.getAbsolutePath());
                 return JsonResponse.success(realFile.getAbsolutePath());
             }
 
