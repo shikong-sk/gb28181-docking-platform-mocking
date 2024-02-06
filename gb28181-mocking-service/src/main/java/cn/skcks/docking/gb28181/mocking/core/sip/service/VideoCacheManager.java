@@ -76,13 +76,13 @@ public class VideoCacheManager {
 
     @SneakyThrows
     protected CompletableFuture<JsonResponse<String>> downloadVideo(String deviceCode, Date startTime, Date endTime) {
-        return CompletableFuture.supplyAsync(()->{
-            File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
-            if(realFile.exists()){
-                log.info("文件 {} 已缓存, 直接返回", realFile.getAbsolutePath());
-                return JsonResponse.success(realFile.getAbsolutePath());
-            }
+        File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
+        if(realFile.exists()){
+            log.info("文件 {} 已缓存, 直接返回", realFile.getAbsolutePath());
+            return CompletableFuture.completedFuture(JsonResponse.success(realFile.getAbsolutePath()));
+        }
 
+        return CompletableFuture.supplyAsync(()->{
             final String url = UrlBuilder.of(deviceProxyConfig.getUrl())
                     .addPath("video")
                     .addQuery("device_id", deviceCode)
