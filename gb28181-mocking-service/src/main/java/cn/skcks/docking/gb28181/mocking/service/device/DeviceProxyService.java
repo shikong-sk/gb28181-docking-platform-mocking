@@ -111,7 +111,7 @@ public class DeviceProxyService {
         GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
         MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
         boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
-//        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
+        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
                     .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
                     .retryIfException()
@@ -150,7 +150,8 @@ public class DeviceProxyService {
             schedule.cancel(false);
             // 响应 sdp ok
             sendOkResponse.run();
-//        });
+        });
+
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             scheduledExecutorService.schedule(()->{
                 StopSendRtp stopSendRtp = new StopSendRtp();
@@ -201,15 +202,15 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
-                //String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
-                String rtpUrl = "rtp://" + toAddr + ":" + toPort;
+                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+//                String rtpUrl = "rtp://" + toAddr + ":" + toPort;
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
-                Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
-                // 停止发送 trying
-                schedule.cancel(true);
-                // 响应 sdp ok
-                sendOkResponse.run();
-//                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+//                // 停止发送 trying
+//                schedule.cancel(true);
+//                // 响应 sdp ok
+//                sendOkResponse.run();
+                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 downloadTask.put(device.getDeviceCode(), executor);
                 executeResultHandler.waitFor();
