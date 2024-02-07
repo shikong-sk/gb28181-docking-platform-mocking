@@ -205,7 +205,11 @@ public class DeviceProxyService {
                 String rtpUrl = "rtp://" + toAddr + ":" + toPort;
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
                 Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
-                //requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                // 停止发送 trying
+                schedule.cancel(true);
+                // 响应 sdp ok
+                sendOkResponse.run();
+//                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 downloadTask.put(device.getDeviceCode(), executor);
                 executeResultHandler.waitFor();
