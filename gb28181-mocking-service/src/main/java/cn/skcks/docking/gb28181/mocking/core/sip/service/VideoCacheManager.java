@@ -23,8 +23,6 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.concurrent.*;
@@ -71,7 +69,15 @@ public class VideoCacheManager {
 
     public CompletableFuture<JsonResponse<String>> get(String deviceCode, Date startTime, Date endTime){
         String name = fileName(deviceCode, startTime, endTime);
-        return tasks.get(name);
+        CompletableFuture<JsonResponse<String>> future = tasks.get(name);
+        if(future == null){
+            File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
+            if(realFile.exists()){
+                log.info("文件 {} 已缓存, 直接返回", realFile.getAbsolutePath());
+                return CompletableFuture.completedFuture(JsonResponse.success(realFile.getAbsolutePath()));
+            }
+        }
+        return future;
     }
 
     @SneakyThrows
@@ -91,17 +97,14 @@ public class VideoCacheManager {
                     .addQuery("useDownload", true).build();
             File file = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4.tmp").toFile();
             log.info("文件存储路径 => {}", file.getAbsolutePath());
-            log.info("文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
+            log.info("临时文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
 
             if(file.exists()){
                 file.delete();
-                log.info("删除已存但未完成下载的文件 => {}", file.getAbsolutePath());
+                log.info("删除已存但未完成下载的临时文件 => {}", file.getAbsolutePath());
             }
 
             try (FileOutputStream outputStream = new FileOutputStream(file)) {
-                FileChannel channel = outputStream.getChannel();
-                FileLock lock = channel.lock();
-
                 HttpClient client = HttpClients.custom()
                         .setConnectionManager(manager)
                         .setConnectionManagerShared(true)
@@ -114,10 +117,10 @@ public class VideoCacheManager {
                     return stream;
                 });
                 execute.close();
-                log.info("视频下载完成 => {}", file.getAbsolutePath());
-                log.info("文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
+                log.info("临时文件下载完成 => {}", file.getAbsolutePath());
+                log.info("临时文件 {}, 是否存在: {}", file.getAbsolutePath(), file.exists());
                 file.renameTo(realFile);
-                lock.release();
+                log.info("保存视频文件 => {}", realFile.getAbsolutePath());
                 return JsonResponse.success(realFile.getAbsolutePath());
             } catch (Exception e) {
                 log.error("视频下载失败 => {}", e.getMessage());
