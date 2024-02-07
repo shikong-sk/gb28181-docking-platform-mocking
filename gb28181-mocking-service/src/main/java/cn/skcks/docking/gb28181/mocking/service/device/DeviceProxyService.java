@@ -157,11 +157,12 @@ public class DeviceProxyService {
                 stopSendRtp.setApp(DEFAULT_ZLM_APP);
                 stopSendRtp.setStream(callId);
                 stopSendRtp.setSsrc(ssrc);
+                sendBye(request,device,key);
             }, 5, TimeUnit.SECONDS);
         });
-        zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            sendBye(request,device,key);
-        });
+//        zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
+//            sendBye(request,device,key);
+//        });
     }
 
     private Flow.Subscriber<SIPRequest> ffmpegTask(SIPRequest request,ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
