@@ -136,9 +136,13 @@ public class DeviceProxyService {
                     return startSendRtpResp;
                 });
             } catch (Exception e) {
+                log.error("调用 zlm rtp 推流失败", e);
                 schedule.cancel(true);
+                // 响应 sdp ok
+                sendOkResponse.run();
                 Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
                         .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
+                sendBye(request,device,key);
                 throw new RuntimeException(e);
             }
 
@@ -148,10 +152,12 @@ public class DeviceProxyService {
             sendOkResponse.run();
 //        });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            StopSendRtp stopSendRtp = new StopSendRtp();
-            stopSendRtp.setApp(DEFAULT_ZLM_APP);
-            stopSendRtp.setStream(callId);
-            stopSendRtp.setSsrc(ssrc);
+            scheduledExecutorService.schedule(()->{
+                StopSendRtp stopSendRtp = new StopSendRtp();
+                stopSendRtp.setApp(DEFAULT_ZLM_APP);
+                stopSendRtp.setStream(callId);
+                stopSendRtp.setSsrc(ssrc);
+            }, 5, TimeUnit.SECONDS);
         });
         zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             sendBye(request,device,key);
