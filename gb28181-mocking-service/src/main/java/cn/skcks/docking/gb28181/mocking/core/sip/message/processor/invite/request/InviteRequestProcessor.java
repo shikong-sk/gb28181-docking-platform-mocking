@@ -36,7 +36,6 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.EventObject;
 import java.util.Vector;
-import java.util.concurrent.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -257,9 +256,6 @@ public class InviteRequestProcessor implements MessageProcessor, SmartLifecycle 
         String callId = request.getCallId().getCallId();
         String key = GenericSubscribe.Helper.getKey(Request.ACK, callId);
         subscribe.getAckSubscribe().addPublisher(key);
-        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        final ScheduledFuture<?>[] schedule = new ScheduledFuture<?>[1];
-        Flow.Subscriber<SIPRequest> subscriber;
 
         // 发送 sdp 响应
         Runnable sendOkResponse = () -> {

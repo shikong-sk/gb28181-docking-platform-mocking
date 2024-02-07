@@ -107,11 +107,11 @@ public class DeviceProxyService {
         void process(SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
     }
 
-    private String requestZlmPushStream(ScheduledFuture<?> schedule, Runnable sendOkResponse, SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
+    private void requestZlmPushStream(ScheduledFuture<?> schedule, Runnable sendOkResponse, SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
         GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
         MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
         boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
-        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
+//        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
                     .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
                     .retryIfException()
@@ -146,7 +146,7 @@ public class DeviceProxyService {
             schedule.cancel(false);
             // 响应 sdp ok
             sendOkResponse.run();
-        });
+//        });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             StopSendRtp stopSendRtp = new StopSendRtp();
             stopSendRtp.setApp(DEFAULT_ZLM_APP);
@@ -156,7 +156,6 @@ public class DeviceProxyService {
         zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             sendBye(request,device,key);
         });
-        return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + DEFAULT_ZLM_APP +"/" + callId;
     }
 
     private Flow.Subscriber<SIPRequest> ffmpegTask(SIPRequest request,ConcurrentHashMap<String, Executor> tasks, String callId, String key, MockingDevice device){
@@ -175,9 +174,10 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             try {
-                String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule,request, device, key);
                 Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 callbackTask.put(device.getDeviceCode(), executor);
                 executeResultHandler.waitFor();
@@ -194,9 +194,10 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
-                String zlmRtpUrl = requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
                 Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 downloadTask.put(device.getDeviceCode(), executor);
                 executeResultHandler.waitFor();
@@ -206,6 +207,10 @@ public class DeviceProxyService {
                 throw new RuntimeException(e);
             }
         };
+    }
+
+    private String getZlmRtmpUrl(String app, String streamId){
+        return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + app +"/" + streamId;
     }
 
     private ScheduledFuture<?> trying(SIPRequest request){
