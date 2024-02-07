@@ -201,9 +201,10 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
-                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                //String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                String rtpUrl = "rtp://" + toAddr + ":" + toPort;
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
-                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
                 requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                 downloadTask.put(device.getDeviceCode(), executor);
