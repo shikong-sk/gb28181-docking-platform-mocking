@@ -415,7 +415,10 @@ public class DeviceProxyService {
 
     @SneakyThrows
     public void pullLiveStream2Rtp(SIPRequest request,Runnable sendOkResponse,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
-        String liveCache = CacheUtil.getKey("INVITE", "LIVE", device.getGbDeviceId());
+        String liveCacheKey = CacheUtil.getKey("INVITE", "LIVE", device.getGbDeviceId());
+        String liveCache = RedisUtil.StringOps.get(liveCacheKey);
+        RedisUtil.KeyOps.delete(liveCache);
+
         // 关闭已存在的实时流 bye 订阅（如果存在）
         subscribe.getByeSubscribe().delPublisher(liveCache);
 
