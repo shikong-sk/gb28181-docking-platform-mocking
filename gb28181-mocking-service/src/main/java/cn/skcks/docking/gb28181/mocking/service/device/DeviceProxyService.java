@@ -26,7 +26,7 @@ import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
-import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtmpConfig;
+import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtspConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
@@ -91,7 +91,7 @@ public class DeviceProxyService {
     private final ZlmMediaService zlmMediaService;
     private final ZlmMediaConfig zlmMediaConfig;
     private final ZlmStreamChangeHookService zlmStreamChangeHookService;
-    private final ZlmRtmpConfig zlmRtmpConfig;
+    private final ZlmRtspConfig zlmRtspConfig;
     private final VideoCacheManager videoCacheManager;
 
     private final String DEFAULT_ZLM_APP = "live";
@@ -174,7 +174,7 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
             try {
-                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                String zlmRtpUrl = getZlmRtspUrl(DEFAULT_ZLM_APP, callId);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule,request, device, key);
                 Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -194,7 +194,7 @@ public class DeviceProxyService {
             ScheduledFuture<?> schedule = trying(request);
             Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
             try {
-                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                String zlmRtpUrl = getZlmRtspUrl(DEFAULT_ZLM_APP, callId);
                 FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
                 Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
                 requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
@@ -209,8 +209,8 @@ public class DeviceProxyService {
         };
     }
 
-    private String getZlmRtmpUrl(String app, String streamId){
-        return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + app +"/" + streamId;
+    private String getZlmRtspUrl(String app, String streamId){
+        return "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtspConfig.getPort() + "/" + app +"/" + streamId;
     }
 
     private ScheduledFuture<?> trying(SIPRequest request){
@@ -355,7 +355,7 @@ public class DeviceProxyService {
                 .withStopStrategy(StopStrategies.stopAfterAttempt(3))
                 .build();
 
-        String toUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
+        String toUrl = "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtspConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         try {
             ZlmResponse<AddFFmpegSourceResp> sourceResp = retryer.call(() -> zlmMediaService.addFfmpegSource(AddFFmpegSource.builder()

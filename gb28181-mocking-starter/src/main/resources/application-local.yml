@@ -11,7 +11,7 @@ spring:
       #    host: 192.168.1.241
       host: 10.10.10.200
       # [必须修改] 端口号
-      port: 6379
+      port: 16379
       # [可选] 数据库 DB
       database: 15
       # [可选] 访问密码,若你的redis服务器没有设置密码，就不需要用密码去连接
@@ -48,7 +48,8 @@ gb28181:
     # [可选]
     domain: 4405010000
     # [可选]
-    id: 44050100002000000002
+    #id: 44050100002000000002
+    id: 44050100002000000009
     # [可选] 默认设备认证密码，后续扩展使用设备单独密码, 移除密码将不进行校验
     password: 123456
     expire: 3600
@@ -58,17 +59,17 @@ gb28181:
     ip: 10.10.10.20
 #    ip: 192.168.10.32
 #    ip: 192.168.3.12
-    port: 5063
-#    port: 5061
+#    port: 5060
+    port: 5061
     password: 123456
     domain: 4405010000
-#    id: 44050100002000000002
-    id: 44050100002000000003
+    id: 44050100002000000002
+#    id: 44050100002000000003
 
 media:
   local:
     hook: http://10.10.10.20:18182/zlm/hook
-    delay: 100ms
+    delay: 2000ms
     fixed: 0s
   ip: 10.10.10.200
   url: 'http://10.10.10.200:5081'
@@ -76,20 +77,22 @@ media:
   id: amrWMKmbKqoBjRQ9
 #  secret: 035c73f7-bb6b-4889-a715-d9eb2d1925cc
   secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
-  rtmp:
-    port: 1936
+  rtsp:
+    port: 554
 proxy:
   device:
     # 代理的视频接口地址, 用于获取历史视频
     # 参数 device_id, begin_time, end_time
-    url: http://10.10.10.20:18186
+#    url: http://10.10.10.20:
+    url: http://10.10.10.200:18183
     use-download-to-playback: true
     proxy-video-in-time-range: true
     proxy-time-range: 5m
     pre-download-for-record-info:
       time-range: 5m
-      cache-path: ./record
+#      cache-path: ./record
       enable: true
+      cache-path: G:/Temp/record
 ffmpeg-support:
   task:
     # 最大同时推流任务数, <= 0 时不做限制
@@ -97,14 +100,21 @@ ffmpeg-support:
   ffmpeg: D:\Soft\Captura\ffmpeg\ffmpeg.exe
   ffprobe: D:\Soft\Captura\ffmpeg\ffprobe.exe
   rtp:
-    input: -thread_queue_size 128 -re -i http://10.10.10.200:5081/live/test.live.flv
-#    input: -re -i
-    output: -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv #rtp_mpegts
-#    output: -vcodec h264 -acodec aac -vf scale=640:-1 -f rtp_mpegts # -rtsp_transport tcp
-    download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
+    #input: -thread_queue_size 128 -re -i http://10.10.10.200:5081/live/test.live.flv
+    #input: -thread_queue_size 128 -re -i rtsp://admin:XXXXXX@10.10.11.171/Streaming/Channels/1/
+    #input: -hwaccel cuda -re -i rtsp://10.10.11.200/camera/171
+    input: -re -i
+#    output: -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f rtsp #flv #rtp_mpegts
+    output: -c:v copy -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f rtsp #flv #rtp_mpegts
+    download: -thread_queue_size 128 -i
+  #    output: -vcodec h264 -acodec aac -vf scale=640:-1 -f rtp_mpegts # -rtsp_transport tcp
+#    download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
+#    download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS
   debug:
-    download: true
-    input: true
+#    download: true
+#    input: true
+    download: false
+    input: false
     output: false
 
 # [可选] 日志配置, 一般不需要改
