@@ -60,8 +60,8 @@ gb28181:
 media:
   local:
     hook: http://10.10.10.200:18182/zlm/hook
-  rtmp:
-    port: 1935
+  rtsp:
+    port: 554
   ip: 10.10.10.200
   url: 'http://10.10.10.200:5080'
   #  url: 'http://10.10.10.200:12580/anything/'
@@ -81,7 +81,7 @@ ffmpeg-support:
   ffprobe: /usr/bin/ffmpeg/ffprobe
   rtp:
     input: -re -i
-    output: -vcodec h264 -acodec aac -f flv
+    output: -vcodec h264 -acodec aac -f rtsp
   debug:
     download: false
     input: false

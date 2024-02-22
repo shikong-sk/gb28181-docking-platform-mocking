@@ -70,8 +70,8 @@ media:
   id: amrWMKmbKqoBjRQ9
 #  secret: 035c73f7-bb6b-4889-a715-d9eb2d1925cc
   secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
-  rtmp:
-    port: 1937
+  rtsp:
+    port: 554
 proxy:
   device:
     # 代理的视频接口地址, 用于获取历史视频
@@ -105,7 +105,7 @@ ffmpeg-support:
     #output: -filter:v "setpts=4.0*PTS" -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
     # 下载 正常速率
     #output: -r 30 -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f flv
-    output: -c:v copy -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
+    output: -c:v copy -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f rtsp
     #output: -r 30 -vcodec libx264 -acodec aac -filter:v "setpts=1*PTS" -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f flv
     #download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
     download: -i

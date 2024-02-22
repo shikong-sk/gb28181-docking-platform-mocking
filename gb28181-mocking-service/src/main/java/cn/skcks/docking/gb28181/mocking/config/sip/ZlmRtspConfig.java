@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "media.rtmp")
-public class ZlmRtmpConfig {
-    int port = 1935;
+@ConfigurationProperties(prefix = "media.rtsp")
+public class ZlmRtspConfig {
+    int port = 554;
 }
