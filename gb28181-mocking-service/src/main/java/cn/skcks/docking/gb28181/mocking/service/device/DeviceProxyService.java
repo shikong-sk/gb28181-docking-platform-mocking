@@ -416,11 +416,15 @@ public class DeviceProxyService {
     @SneakyThrows
     public void pullLiveStream2Rtp(SIPRequest request,Runnable sendOkResponse,String callId, MockingDevice device, String rtpAddr, int rtpPort, String ssrc){
         String liveCacheKey = CacheUtil.getKey("INVITE", "LIVE", device.getGbDeviceId());
-        String liveCache = RedisUtil.StringOps.get(liveCacheKey);
-        RedisUtil.KeyOps.delete(liveCache);
-
-        // 关闭已存在的实时流 bye 订阅（如果存在）
-        subscribe.getByeSubscribe().delPublisher(liveCache);
+        String liveCache;
+        if(liveCacheKey != null){
+            liveCache = RedisUtil.StringOps.get(liveCacheKey);
+            if(liveCache != null){
+                RedisUtil.KeyOps.delete(liveCache);
+                // 关闭已存在的实时流 bye 订阅（如果存在）
+                subscribe.getByeSubscribe().delPublisher(liveCache);
+            }
+        }
 
         ScheduledFuture<?> schedule = trying(request);
         Retryer<ZlmResponse<AddStreamProxyResp>> retryer = RetryerBuilder.<ZlmResponse<AddStreamProxyResp>>newBuilder()
