@@ -8,6 +8,7 @@ import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamNoneReaderHook
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +25,10 @@ public class ZlmHookApi {
 
     @PostJson("/on_stream_changed")
     public void onStreamChanged(@RequestBody ZlmStreamChangeDTO dto){
-        zlmStreamChangeHookService.processEvent(dto.getApp(),dto.getStream(), dto.getRegist());
+        log.debug("on_stream_changed {}", dto);
+        if(StringUtils.equalsIgnoreCase(dto.getSchema(), "rtsp")){
+            zlmStreamChangeHookService.processEvent(dto.getApp(),dto.getStream(), dto.getRegist());
+        }
     }
 
     @PostJson("/on_stream_none_reader")
