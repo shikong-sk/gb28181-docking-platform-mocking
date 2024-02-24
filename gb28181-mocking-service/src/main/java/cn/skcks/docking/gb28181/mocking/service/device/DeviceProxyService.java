@@ -114,11 +114,11 @@ public class DeviceProxyService {
                     .retryIfException()
                     .retryIfRuntimeException()
                     // 重试间隔
-                    .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                    .withWaitStrategy(WaitStrategies.fixedWait(1, TimeUnit.MILLISECONDS))
                     // 重试次数
-                    .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                    .withStopStrategy(StopStrategies.stopAfterAttempt(1000))
                     .build();
-        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
+        // zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             try {
                 retryer.call(()->{
                     StartSendRtp startSendRtp = new StartSendRtp();
@@ -139,7 +139,7 @@ public class DeviceProxyService {
                         .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                 throw new RuntimeException(e);
             }
-        });
+        // });
 
 //        });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
@@ -234,9 +234,16 @@ public class DeviceProxyService {
                         Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
                         try {
                             String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                            scheduledExecutorService.submit(()->{
+                                try {
+                                    requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
                             FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                             Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                            requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+
                             scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                             downloadTask.put(device.getDeviceCode(), executor);
                             executeResultHandler.waitFor();
