@@ -283,14 +283,14 @@ public class InviteRequestProcessor implements MessageProcessor, SmartLifecycle 
             deviceProxyService.pullStreamByZlmFfmpegSource(request, callId, device, start, stop, address, port, ssrc);
         } else {
             // RTP 推流
-            deviceProxyService.proxyVideo2Rtp(request, sendOkResponse, callId, device, start, stop, address, port, ssrc, deviceProxyService.playbackTask());
+            deviceProxyService.proxyVideo2Rtp(sendOkResponse,request, callId, device, start, stop, address, port, ssrc, deviceProxyService.playbackTask());
         }
     }
 
     public void downloadSubscriber(SIPRequest request,Runnable sendOkResponse, String callId,MockingDevice device,Date start,Date stop,String address,int port,String ssrc){
         log.info("收到 下载请求: {} 开始推流",callId);
-                // RTP 推流
-        deviceProxyService.proxyVideo2Rtp(request, sendOkResponse, callId, device, start, stop, address, port, ssrc,deviceProxyService.downloadTask());
+        // RTP 推流
+        deviceProxyService.proxyVideo2Rtp(sendOkResponse, request, callId, device, start, stop, address, port, ssrc,deviceProxyService.downloadTask());
     }
 
     @Override

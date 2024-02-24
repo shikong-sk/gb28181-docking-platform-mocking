@@ -23,10 +23,7 @@ import cn.skcks.docking.gb28181.media.dto.rtp.StartSendRtpResp;
 import cn.skcks.docking.gb28181.media.dto.rtp.StopSendRtp;
 import cn.skcks.docking.gb28181.media.dto.status.ResponseStatus;
 import cn.skcks.docking.gb28181.media.proxy.ZlmMediaService;
-import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
-import cn.skcks.docking.gb28181.mocking.config.sip.FfmpegConfig;
-import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
-import cn.skcks.docking.gb28181.mocking.config.sip.ZlmRtspConfig;
+import cn.skcks.docking.gb28181.mocking.config.sip.*;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.processor.message.request.notify.dto.MediaStatusRequestDTO;
 import cn.skcks.docking.gb28181.mocking.core.sip.message.subscribe.SipSubscribe;
 import cn.skcks.docking.gb28181.mocking.core.sip.request.SipRequestBuilder;
@@ -91,7 +88,7 @@ public class DeviceProxyService {
     private final ZlmMediaService zlmMediaService;
     private final ZlmMediaConfig zlmMediaConfig;
     private final ZlmStreamChangeHookService zlmStreamChangeHookService;
-    private final ZlmRtspConfig zlmRtspConfig;
+    private final ZlmRtmpConfig zlmRtmpConfig;
     private final VideoCacheManager videoCacheManager;
 
     private final String DEFAULT_ZLM_APP = "live";
@@ -104,10 +101,10 @@ public class DeviceProxyService {
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public interface TaskProcessor {
-        void process(SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
+        void process(Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
     }
 
-    private void requestZlmPushStream(ScheduledFuture<?> schedule, Runnable sendOkResponse, SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
+    private void requestZlmPushStream(SIPRequest request, String callId, String fromUrl, String toAddr, int toPort, MockingDevice device, String key, long time, String ssrc) throws Exception{
         GB28181Description gb28181Description = new GB28181DescriptionParser(new String(request.getRawContent())).parse();
         MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
         boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
@@ -121,6 +118,7 @@ public class DeviceProxyService {
                     // 重试次数
                     .withStopStrategy(StopStrategies.stopAfterAttempt(3))
                     .build();
+        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             try {
                 retryer.call(()->{
                     StartSendRtp startSendRtp = new StartSendRtp();
@@ -136,16 +134,13 @@ public class DeviceProxyService {
                     return startSendRtpResp;
                 });
             } catch (Exception e) {
-                schedule.cancel(true);
+                log.error("zlm rtp 推流失败",e);
                 Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
                         .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                 throw new RuntimeException(e);
             }
+        });
 
-            // 停止发送 trying
-            schedule.cancel(false);
-            // 响应 sdp ok
-            sendOkResponse.run();
 //        });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             StopSendRtp stopSendRtp = new StopSendRtp();
@@ -170,57 +165,101 @@ public class DeviceProxyService {
     }
 
     public TaskProcessor playbackTask(){
-        return (SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
-            ScheduledFuture<?> schedule = trying(request);
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
-            try {
-                String zlmRtpUrl = getZlmRtspUrl(DEFAULT_ZLM_APP, callId);
-                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule,request, device, key);
-                Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
-                scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
-                callbackTask.put(device.getDeviceCode(), executor);
-                executeResultHandler.waitFor();
-            } catch (Exception e) {
-                schedule.cancel(true);
-                sendBye(request,device,"");
-                throw new RuntimeException(e);
-            }
+        return (Runnable sendOkResponse, SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc) -> {
+            scheduledExecutorService.schedule(() -> {
+                trying(request);
+                sendOkResponse.run();
+                String ackKey = GenericSubscribe.Helper.getKey(Request.ACK, callId);
+                subscribe.getAckSubscribe().addPublisher(ackKey, 1, TimeUnit.MINUTES);
+                subscribe.getAckSubscribe().addSubscribe(ackKey, new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(1);
+                    }
+
+                    @Override
+                    public void onNext(SIPRequest item) {
+                        subscribe.getAckSubscribe().delPublisher(ackKey);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
+                        try {
+                            String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                            Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                            requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                            scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
+                            callbackTask.put(device.getDeviceCode(), executor);
+                            executeResultHandler.waitFor();
+                        } catch (Exception e) {
+                            sendBye(request,device,"");
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            }, 1, TimeUnit.SECONDS);
         };
     }
 
     public TaskProcessor downloadTask(){
-        return (SIPRequest request,Runnable sendOkResponse,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
-            ScheduledFuture<?> schedule = trying(request);
-            Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
-            try {
-                String zlmRtpUrl = getZlmRtspUrl(DEFAULT_ZLM_APP, callId);
-                FfmpegExecuteResultHandler executeResultHandler = mediaStatus(schedule, request, device, key);
-                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                requestZlmPushStream(schedule, sendOkResponse, request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
-                scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
-                downloadTask.put(device.getDeviceCode(), executor);
-                executeResultHandler.waitFor();
-            } catch (Exception e) {
-                schedule.cancel(true);
-                sendBye(request,device,"");
-                throw new RuntimeException(e);
-            }
+        return (Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
+            scheduledExecutorService.schedule(() -> {
+                trying(request);
+                sendOkResponse.run();
+                String ackKey = GenericSubscribe.Helper.getKey(Request.ACK, callId);
+                subscribe.getAckSubscribe().addPublisher(ackKey, 1, TimeUnit.MINUTES);
+                subscribe.getAckSubscribe().addSubscribe(ackKey, new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(1);
+                    }
+
+                    @Override
+                    public void onNext(SIPRequest item) {
+                        subscribe.getAckSubscribe().delPublisher(ackKey);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
+                        try {
+                            String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                            Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                            requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                            scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
+                            downloadTask.put(device.getDeviceCode(), executor);
+                            executeResultHandler.waitFor();
+                        } catch (Exception e) {
+                            sendBye(request, device, "");
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            }, 1, TimeUnit.SECONDS);
         };
     }
 
-    private String getZlmRtspUrl(String app, String streamId){
-        return "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtspConfig.getPort() + "/" + app +"/" + streamId;
+    private String getZlmRtmpUrl(String app, String streamId){
+        return "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + app +"/" + streamId;
     }
 
-    private ScheduledFuture<?> trying(SIPRequest request){
-        return scheduledExecutorService.scheduleAtFixedRate(() -> {
-            InviteResponseBuilder inviteRequestBuilder = InviteResponseBuilder.builder().build();
-            Response tryingInviteResponse = inviteRequestBuilder.createTryingInviteResponse(request);
-            String ip = request.getLocalAddress().getHostAddress();
-            String transPort = request.getTopmostViaHeader().getTransport();
-            sender.sendResponse(ip, transPort, ((provider, ip1, port) -> tryingInviteResponse));
-        }, 0,1, TimeUnit.SECONDS);
+    private void trying(SIPRequest request){
+        InviteResponseBuilder inviteRequestBuilder = InviteResponseBuilder.builder().build();
+        Response tryingInviteResponse = inviteRequestBuilder.createTryingInviteResponse(request);
+        String ip = request.getLocalAddress().getHostAddress();
+        String transPort = request.getTopmostViaHeader().getTransport();
+        sender.sendResponse(ip, transPort, ((provider, ip1, port) -> tryingInviteResponse));
     }
 
     public Flow.Subscriber<SIPRequest> ffmpegByeSubscriber(SIPRequest inviteRequest,String key, MockingDevice device, ConcurrentHashMap<String, Executor> task){
@@ -355,7 +394,7 @@ public class DeviceProxyService {
                 .withStopStrategy(StopStrategies.stopAfterAttempt(3))
                 .build();
 
-        String toUrl = "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtspConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
+        String toUrl = "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         try {
             ZlmResponse<AddFFmpegSourceResp> sourceResp = retryer.call(() -> zlmMediaService.addFfmpegSource(AddFFmpegSource.builder()
@@ -426,7 +465,8 @@ public class DeviceProxyService {
             }
         }
 
-        ScheduledFuture<?> schedule = trying(request);
+        trying(request);
+        sendOkResponse.run();
         Retryer<ZlmResponse<AddStreamProxyResp>> retryer = RetryerBuilder.<ZlmResponse<AddStreamProxyResp>>newBuilder()
                 .retryIfResult(resp -> {
                     log.info("resp {}", resp);
@@ -479,11 +519,6 @@ public class DeviceProxyService {
                     log.error("zlm rtp 推流失败",e);
                     sendBye(request, device, "");
                 }
-
-                // 停止发送 trying
-                schedule.cancel(false);
-                // 响应 sdp ok
-                sendOkResponse.run();
             });
 
             zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()-> {
@@ -501,8 +536,6 @@ public class DeviceProxyService {
             subscribe.getByeSubscribe().addPublisher(key);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         } catch (Exception e) {
-            // 停止发送 trying
-            schedule.cancel(true);
 
             log.error("zlm 代理拉流失败",e);
             sendBye(request, device, "");
@@ -536,12 +569,12 @@ public class DeviceProxyService {
         return fromUrl;
     }
 
-    public void proxyVideo2Rtp(SIPRequest request,Runnable sendOkResponse, String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, String ssrc, TaskProcessor taskProcessor) {
+    public void proxyVideo2Rtp(Runnable sendOkResponse,SIPRequest request, String callId, MockingDevice device, Date startTime, Date endTime, String rtpAddr, int rtpPort, String ssrc, TaskProcessor taskProcessor) {
         String fromUrl = getProxyUrl(device, startTime, endTime);
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         subscribe.getByeSubscribe().addPublisher(key);
         long time = DateUtil.between(startTime, endTime, DateUnit.SECOND);
-        taskProcessor.process(request, sendOkResponse, callId,fromUrl,rtpAddr, rtpPort,device,key,time, ssrc);
+        taskProcessor.process(sendOkResponse,request, callId,fromUrl,rtpAddr, rtpPort,device,key,time, ssrc);
     }
 
     @SneakyThrows
@@ -560,14 +593,11 @@ public class DeviceProxyService {
         @Setter(AccessLevel.PRIVATE)
         private boolean hasResult = false;
 
-        private final ScheduledFuture<?> tryingSchedule;
         private final SIPRequest request;
         private final MockingDevice device;
         private final String key;
 
         private void close(){
-            tryingSchedule.cancel(true);
-
             CallIdHeader requestCallId = request.getCallId();
             String callId = requestCallId.getCallId();
             callbackTask.remove(callId);
@@ -624,8 +654,8 @@ public class DeviceProxyService {
         }
     }
 
-    public FfmpegExecuteResultHandler mediaStatus(ScheduledFuture<?> tryingSchedule,SIPRequest request, MockingDevice device,String key){
-        return new FfmpegExecuteResultHandler(tryingSchedule,request,device,key);
+    public FfmpegExecuteResultHandler mediaStatus(SIPRequest request, MockingDevice device,String key){
+        return new FfmpegExecuteResultHandler(request,device,key);
     }
 
     /**

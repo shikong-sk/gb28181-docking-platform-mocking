@@ -77,6 +77,8 @@ media:
   id: amrWMKmbKqoBjRQ9
 #  secret: 035c73f7-bb6b-4889-a715-d9eb2d1925cc
   secret: 4155cca6-2f9f-11ee-85e6-8de4ce2e7333
+  rtmp:
+    port: 1936
   rtsp:
     port: 554
 proxy:
@@ -104,10 +106,11 @@ ffmpeg-support:
     #input: -thread_queue_size 128 -re -i rtsp://admin:XXXXXX@10.10.11.171/Streaming/Channels/1/
     #input: -hwaccel cuda -re -i rtsp://10.10.11.200/camera/171
     input: -re -i
+    output: -c:v copy -an -f flv
 #    output: -tune zerolatency -vcodec libx264 -acodec aac -preset ultrafast -vf scale=640:-1 -f rtsp #flv #rtp_mpegts
-    output: -c:v copy -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f rtsp #flv #
+    #output: -c:v libx264 -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f rtsp #flv #
 #    output: -c:v h264 -an -preset ultrafast -flvflags no_duration_filesize -bf 0 -max_interleave_delta 0 -f rtsp
-    download: -thread_queue_size 128 -re -i
+    download: -thread_queue_size 128 -i
     download-speed: 0
   #    output: -vcodec h264 -acodec aac -vf scale=640:-1 -f rtp_mpegts # -rtsp_transport tcp
 #    download: -i E:\Repository\other\happytime-gb28181-device-x64\666.mp4 -filter:v "setpts=4.0*PTS"
