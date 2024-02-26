@@ -116,7 +116,7 @@ public class DeviceProxyService {
                     // 重试间隔
                     .withWaitStrategy(WaitStrategies.fixedWait(1, TimeUnit.MILLISECONDS))
                     // 重试次数
-                    .withStopStrategy(StopStrategies.stopAfterAttempt(1000))
+                    .withStopStrategy(StopStrategies.stopAfterAttempt(3000))
                     .build();
         // zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
             try {
