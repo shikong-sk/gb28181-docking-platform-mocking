@@ -1,5 +1,7 @@
 package cn.skcks.docking.gb28181.mocking.core.sip.service;
 
+import cn.hutool.cache.CacheUtil;
+import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.IoUtil;
@@ -36,7 +38,8 @@ public class VideoCacheManager {
     @Qualifier(MockingExecutor.EXECUTOR_BEAN_NAME)
     private final Executor executor;
 
-    private final ConcurrentMap<String, CompletableFuture<JsonResponse<String>>> tasks = new ConcurrentHashMap<>();
+    private final TimedCache<String, CompletableFuture<JsonResponse<String>>> tasks =
+            CacheUtil.newTimedCache(TimeUnit.MINUTES.toMillis(30));
 
     private final PoolingHttpClientConnectionManager manager = new PoolingHttpClientConnectionManager();
 
@@ -60,7 +63,7 @@ public class VideoCacheManager {
 
     public void addTask(String deviceCode, Date startTime, Date endTime){
         String name = fileName(deviceCode, startTime, endTime);
-        if(tasks.get(name) != null){
+        if(tasks.get(name, false) != null){
             return;
         }
 
@@ -69,7 +72,7 @@ public class VideoCacheManager {
 
     public CompletableFuture<JsonResponse<String>> get(String deviceCode, Date startTime, Date endTime){
         String name = fileName(deviceCode, startTime, endTime);
-        CompletableFuture<JsonResponse<String>> future = tasks.get(name);
+        CompletableFuture<JsonResponse<String>> future = tasks.get(name, false);
         if(future == null){
             File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
             if(realFile.exists()){
