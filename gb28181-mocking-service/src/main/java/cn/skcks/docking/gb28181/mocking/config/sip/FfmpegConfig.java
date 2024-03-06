@@ -22,6 +22,7 @@ public class FfmpegConfig {
         private String input = "-re -i";
         private String output = "-vcodec h264 -acodec aac -f rtp_mpegts";
         private String logLevel = "error";
+        private Boolean useRtpToDownload = false;
     }
 
 
