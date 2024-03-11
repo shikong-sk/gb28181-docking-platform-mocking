@@ -52,11 +52,13 @@ public class RegisterService {
 
         List<MockingDevice> enabledDevice = deviceService.getAllEnabledDevice();
 
-        List<CompletableFuture<JsonResponse<Void>>[]> completableFutures = ListUtil.split(enabledDevice, 10).stream().map(items -> {
-            CompletableFuture<JsonResponse<Void>>[] array = enabledDevice.stream().map(this::register).toArray(CompletableFuture[]::new);
+        List<CompletableFuture<JsonResponse<Void>>[]> completableFutures = new ArrayList<>();
+        for (List<MockingDevice> mockingDevices : ListUtil.split(enabledDevice, 200)) {
+            CompletableFuture<JsonResponse<Void>>[] array = mockingDevices.stream().map(this::register).toArray(CompletableFuture[]::new);
             CompletableFuture.allOf(array);
-            return array;
-        }).toList();
+            Thread.sleep(500);
+            completableFutures.add(array);
+        }
 
         List<CompletableFuture<JsonResponse<Void>>> reduce = completableFutures.stream().map(item -> Arrays.stream(item).toList())
                 .reduce(new ArrayList<>(), (prev, cur) -> {
