@@ -182,11 +182,12 @@ public class RecordInfoRequestProcessor {
                 .build();
         recordInfoResponseDTO.setRecordList(recordListDTO);
 
+        final String xml = XmlUtils.toXml(recordInfoResponseDTO);
         FromHeader fromHeader = request.getFromHeader();
         sender.sendRequest((provider, ip, port) -> {
             CallIdHeader callIdHeader = provider.getNewCallId();
             return SipRequestBuilder.createMessageRequest(device,
-                    ip, port, 1, XmlUtils.toXml(recordInfoResponseDTO), fromHeader.getTag(), callIdHeader);
+                    ip, port, 1, xml, fromHeader.getTag(), callIdHeader);
         });
     }
 
