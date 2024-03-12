@@ -35,6 +35,7 @@ import cn.skcks.docking.gb28181.mocking.core.sip.sender.SipSender;
 import cn.skcks.docking.gb28181.mocking.core.sip.service.VideoCacheManager;
 import cn.skcks.docking.gb28181.mocking.orm.mybatis.dynamic.model.MockingDevice;
 import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
+import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmPublishHookService;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamChangeHookService;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.ZlmStreamNoneReaderHookService;
 import cn.skcks.docking.gb28181.sdp.GB28181Description;
@@ -102,6 +103,8 @@ public class DeviceProxyService {
 
     private final ZlmStreamNoneReaderHookService zlmStreamNoneReaderHookService;
 
+    private final ZlmPublishHookService zlmPublishHookService;
+
     private final FfmpegConfig ffmpegConfig;
 
     ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -124,28 +127,30 @@ public class DeviceProxyService {
                     // 重试次数
                     .withStopStrategy(StopStrategies.stopAfterAttempt(3000))
                     .build();
-        // zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            try {
-                retryer.call(()->{
-                    StartSendRtp startSendRtp = new StartSendRtp();
-                    startSendRtp.setApp(DEFAULT_ZLM_APP);
-                    startSendRtp.setStream(callId);
-                    startSendRtp.setSsrc(ssrc);
-                    startSendRtp.setDstUrl(toAddr);
-                    startSendRtp.setDstPort(toPort);
-                    startSendRtp.setUdp(!tcp);
+        zlmPublishHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
+            scheduledExecutorService.submit(()->{
+                try {
+                    retryer.call(()->{
+                        StartSendRtp startSendRtp = new StartSendRtp();
+                        startSendRtp.setApp(DEFAULT_ZLM_APP);
+                        startSendRtp.setStream(callId);
+                        startSendRtp.setSsrc(ssrc);
+                        startSendRtp.setDstUrl(toAddr);
+                        startSendRtp.setDstPort(toPort);
+                        startSendRtp.setUdp(!tcp);
 //                    log.debug("startSendRtp {}",startSendRtp);
-                    StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
+                        StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
 //                    log.debug("startSendRtpResp {}",startSendRtpResp);
-                    return startSendRtpResp;
-                });
-            } catch (Exception e) {
-                log.error("zlm rtp 推流失败",e);
-                Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
-                        .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
-                throw new RuntimeException(e);
-            }
-        // });
+                        return startSendRtpResp;
+                    });
+                } catch (Exception e) {
+                    log.error("zlm rtp 推流失败",e);
+                    Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
+                            .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
+                    throw new RuntimeException(e);
+                }
+            });
+        });
 
 //        });
         zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
@@ -197,9 +202,9 @@ public class DeviceProxyService {
                         Flow.Subscriber<SIPRequest> task = ffmpegTask(request, callbackTask, callId, key, device);
                         try {
                             String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                            requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                             FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
                             Executor executor = pushRtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                            requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
                             scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                             callbackTask.put(device.getDeviceCode(), executor);
                             executeResultHandler.waitFor();
