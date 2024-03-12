@@ -148,7 +148,7 @@ public class RecordInfoRequestProcessor {
 
         FromHeader fromHeader = request.getFromHeader();
         ListUtil.partition(recordInfoItemDTOList,50).forEach(recordList->{
-            RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
+            final RecordInfoResponseDTO recordInfoResponseDTO = new RecordInfoResponseDTO();
             recordInfoResponseDTO.setSn(recordInfoRequestDTO.getSn());
             recordInfoResponseDTO.setDeviceId(device.getGbChannelId());
             recordInfoResponseDTO.setName(device.getName());
@@ -159,10 +159,11 @@ public class RecordInfoRequestProcessor {
                     .build();
             recordInfoResponseDTO.setRecordList(recordListDTO);
 
+            final String xml = XmlUtils.toXml(recordInfoResponseDTO);
             sender.sendRequest((provider, ip, port) -> {
                 CallIdHeader callIdHeader = provider.getNewCallId();
                 return SipRequestBuilder.createMessageRequest(device,
-                        ip, port, 1, XmlUtils.toXml(recordInfoResponseDTO), fromHeader.getTag(), callIdHeader);
+                        ip, port, 1, xml, fromHeader.getTag(), callIdHeader);
             });
         });
     }
