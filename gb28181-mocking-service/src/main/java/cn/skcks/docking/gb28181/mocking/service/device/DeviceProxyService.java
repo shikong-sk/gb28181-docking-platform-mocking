@@ -134,9 +134,9 @@ public class DeviceProxyService {
                     startSendRtp.setDstUrl(toAddr);
                     startSendRtp.setDstPort(toPort);
                     startSendRtp.setUdp(!tcp);
-                    log.info("startSendRtp {}",startSendRtp);
+//                    log.debug("startSendRtp {}",startSendRtp);
                     StartSendRtpResp startSendRtpResp = zlmMediaService.startSendRtp(startSendRtp);
-                    log.info("startSendRtpResp {}",startSendRtpResp);
+//                    log.debug("startSendRtpResp {}",startSendRtpResp);
                     return startSendRtpResp;
                 });
             } catch (Exception e) {
