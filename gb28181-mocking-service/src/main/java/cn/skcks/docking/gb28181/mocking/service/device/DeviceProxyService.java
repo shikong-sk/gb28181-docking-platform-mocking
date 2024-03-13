@@ -153,15 +153,36 @@ public class DeviceProxyService {
             });
         });
 
-//        });
-        zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            StopSendRtp stopSendRtp = new StopSendRtp();
-            stopSendRtp.setApp(DEFAULT_ZLM_APP);
-            stopSendRtp.setStream(callId);
-            stopSendRtp.setSsrc(ssrc);
-        });
+        zlmStreamRegistHookEvent(DEFAULT_ZLM_APP, callId, ssrc);
         zlmStreamNoneReaderHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             sendBye(request,device,key);
+        });
+    }
+
+    private void zlmStreamRegistHookEvent(String app, String callId, String ssrc){
+        zlmStreamChangeHookService.getUnregistHandler(app).put(callId,()->{
+            scheduledExecutorService.submit(()->{
+                ScheduledFuture<?> schedule = scheduledExecutorService.schedule(() -> {
+                    StopSendRtp stopSendRtp = new StopSendRtp();
+                    stopSendRtp.setApp(app);
+                    stopSendRtp.setStream(callId);
+                    stopSendRtp.setSsrc(ssrc);
+
+                    log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", app, callId, ssrc);
+                    zlmMediaService.stopSendRtp(stopSendRtp);
+                }, 3, TimeUnit.SECONDS);
+
+                // 如果 流 在 3秒内 重新注册, 则 取消停止RTP推流
+                zlmStreamChangeHookService.getRegistHandler(app).put(callId,()->{
+                    schedule.cancel(true);
+                    zlmStreamRegistHookEvent(app, callId, ssrc);
+                });
+
+                // 如果 注销 后 3.5 秒内 没有再注册, 就彻底取消相关事件的订阅
+                scheduledExecutorService.schedule(()->{
+                    zlmStreamChangeHookService.getRegistHandler(app).remove(callId);
+                },3500, TimeUnit.MILLISECONDS);
+            });
         });
     }
 
@@ -475,6 +496,7 @@ public class DeviceProxyService {
                 stopSendRtp.setStream(callId);
                 stopSendRtp.setSsrc(ssrc);
 
+                log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", ZLM_FFMPEG_PROXY_APP, callId, ssrc);
                 zlmMediaService.stopSendRtp(stopSendRtp);
             });
 
@@ -562,6 +584,7 @@ public class DeviceProxyService {
                 stopSendRtp.setStream(callId);
                 stopSendRtp.setSsrc(ssrc);
 
+                log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", DEFAULT_ZLM_APP, callId, ssrc);
                 zlmMediaService.stopSendRtp(stopSendRtp);
             });
 
