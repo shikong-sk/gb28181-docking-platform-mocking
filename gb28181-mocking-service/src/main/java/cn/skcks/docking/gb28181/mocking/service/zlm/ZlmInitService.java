@@ -29,7 +29,7 @@ public class ZlmInitService {
         hook.setOnStreamChanged(zlmHookConfig.getHook() + "/on_stream_changed");
         hook.setOnStreamNoneReader(zlmHookConfig.getHook() + "/on_stream_none_reader");
         hook.setOnPublish(zlmHookConfig.getHook() + "/on_publish");
-        config.getRtmp().setHandshakeSecond(10);
+        config.getRtmp().setHandshakeSecond(15);
         config.getRtmp().setKeepAliveSecond(10);
         zlmMediaService.setServerConfig(config);
     }
