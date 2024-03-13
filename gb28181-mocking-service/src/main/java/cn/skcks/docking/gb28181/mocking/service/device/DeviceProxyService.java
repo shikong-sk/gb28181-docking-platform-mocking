@@ -63,6 +63,7 @@ import javax.sip.address.SipURI;
 import javax.sip.header.CallIdHeader;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
@@ -582,9 +583,15 @@ public class DeviceProxyService {
             CompletableFuture<JsonResponse<String>> task = videoCacheManager.get(device.getDeviceCode(), startTime, endTime);
             if(task != null){
                 if(task.isDone()){
-                    String file = task.get().getData();
-                    log.info("本地视频已缓存, 将从本地缓存推流, 缓存文件 => {}", file);
-                    return file;
+                    String filePath = task.get().getData();
+                    File file = new File(filePath);
+                    if(StringUtils.isNotBlank(filePath) && file.exists()){
+                        log.info("本地视频已缓存, 将从本地缓存推流, 缓存文件 => {}", filePath);
+                        return filePath;
+                    } else {
+                        log.info("缓存已失效, 将直接使用 http代理 推流 并 重新缓存, 缓存文件 => {}", filePath);
+                        videoCacheManager.addTask(device.getDeviceCode(), startTime, endTime);
+                    }
                 }
             }
         }
