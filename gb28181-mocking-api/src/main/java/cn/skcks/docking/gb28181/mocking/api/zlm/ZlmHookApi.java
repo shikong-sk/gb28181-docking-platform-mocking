@@ -32,14 +32,16 @@ public class ZlmHookApi {
     @PostJson("/on_stream_changed")
     public void onStreamChanged(@RequestBody ZlmStreamChangeDTO dto){
         log.debug("on_stream_changed {}", dto);
-        if(StringUtils.equalsIgnoreCase(dto.getSchema(), "rtsp")){
+        if(StringUtils.equalsIgnoreCase(dto.getSchema(), "rtmp")){
             zlmStreamChangeHookService.processEvent(dto.getApp(),dto.getStream(), dto.getRegist());
         }
     }
 
     @PostJson("/on_stream_none_reader")
     public void onStreamNoneReader(@RequestBody ZlmStreamNoneReaderDTO dto){
-        zlmStreamNoneReaderHookService.processEvent(dto.getApp(),dto.getStream());
+        if(StringUtils.equalsIgnoreCase(dto.getSchema(), "rtmp")){
+            zlmStreamNoneReaderHookService.processEvent(dto.getApp(),dto.getStream());
+        }
     }
 
     @SneakyThrows

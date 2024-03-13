@@ -428,7 +428,7 @@ public class DeviceProxyService {
                 .withStopStrategy(StopStrategies.stopAfterAttempt(3))
                 .build();
 
-        String toUrl = "rtsp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
+        String toUrl = "rtmp://" + zlmMediaConfig.getIp() + ":" + zlmRtmpConfig.getPort() + "/" + ZLM_FFMPEG_PROXY_APP +"/" + callId;
         String key = GenericSubscribe.Helper.getKey(Request.BYE, callId);
         try {
             ZlmResponse<AddFFmpegSourceResp> sourceResp = retryer.call(() -> zlmMediaService.addFfmpegSource(AddFFmpegSource.builder()
