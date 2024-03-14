@@ -145,7 +145,7 @@ public class DeviceProxyService {
                         return startSendRtpResp;
                     });
                 } catch (Exception e) {
-                    log.error("zlm rtp 推流失败, {} {}, {}", device.getGbChannelId(), callId, e.getMessage());
+                    log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
                             .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                     throw new RuntimeException(e);
@@ -485,7 +485,7 @@ public class DeviceProxyService {
                         return startSendRtpResp;
                     });
                 } catch (Exception e){
-                    log.error("zlm rtp 推流失败",e);
+                    log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     sendBye(request, device, "");
                 }
             });
@@ -573,7 +573,7 @@ public class DeviceProxyService {
                         return startSendRtpResp;
                     });
                 } catch (Exception e){
-                    log.error("zlm rtp 推流失败, {} {}, {}", device.getGbChannelId(), callId, e.getMessage());
+                    log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     sendBye(request, device, "");
                 }
             });
