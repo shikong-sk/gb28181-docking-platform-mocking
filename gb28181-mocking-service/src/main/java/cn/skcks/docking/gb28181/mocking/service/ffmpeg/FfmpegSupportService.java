@@ -44,10 +44,10 @@ public class FfmpegSupportService {
 
         log.info("视频下载参数 {}", inputParam);
 
-        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", rtp.getOutput(), output);
+        String outputParam = debug.getOutput()? rtp.getOutput() : StringUtils.joinWith(" ", "-t", unit.toSeconds(time), rtp.getOutput(), output);
         log.info("视频输出参数 {}", outputParam);
 
-        return ffmpegExecutor(inputParam, outputParam, time, unit, resultHandler);
+        return ffmpegExecutor(inputParam, outputParam, time + 60, unit, resultHandler);
     }
 
     @SneakyThrows

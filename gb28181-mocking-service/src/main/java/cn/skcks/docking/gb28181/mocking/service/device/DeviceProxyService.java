@@ -290,12 +290,12 @@ public class DeviceProxyService {
                                     }
                                 });
 
-                                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time, executeResultHandler);
                                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                                 downloadTask.put(device.getDeviceCode(), executor);
                             } else {
                                 String rtpUrl = getRtpUrl(request);
-                                Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
+                                Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time, executeResultHandler);
                                 scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
                                 downloadTask.put(device.getDeviceCode(), executor);
                             }
