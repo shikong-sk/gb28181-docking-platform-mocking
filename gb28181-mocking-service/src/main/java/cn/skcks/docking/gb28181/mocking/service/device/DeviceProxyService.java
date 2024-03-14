@@ -108,7 +108,7 @@ public class DeviceProxyService {
 
     private final FfmpegConfig ffmpegConfig;
 
-    ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
+    ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(128);
 
     public interface TaskProcessor {
         void process(Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
