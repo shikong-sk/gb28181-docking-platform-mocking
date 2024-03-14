@@ -170,18 +170,18 @@ public class DeviceProxyService {
 
                     log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", app, callId, ssrc);
                     zlmMediaService.stopSendRtp(stopSendRtp);
-                }, 5, TimeUnit.SECONDS);
+                }, 10, TimeUnit.SECONDS);
 
-                // 如果 流 在 5秒内 重新注册, 则 取消停止RTP推流
+                // 如果 流 在 10秒内 重新注册, 则 取消停止RTP推流
                 zlmStreamChangeHookService.getRegistHandler(app).put(callId,()->{
                     schedule.cancel(true);
                     zlmStreamRegistHookEvent(app, callId, ssrc);
                 });
 
-                // 如果 注销 后 5.5 秒内 没有再注册, 就彻底取消相关事件的订阅
+                // 如果 注销 后 10.5 秒内 没有再注册, 就彻底取消相关事件的订阅
                 scheduledExecutorService.schedule(()->{
                     zlmStreamChangeHookService.getRegistHandler(app).remove(callId);
-                },5500, TimeUnit.MILLISECONDS);
+                },10500, TimeUnit.MILLISECONDS);
             });
         });
     }
