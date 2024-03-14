@@ -1,17 +1,20 @@
 package cn.skcks.docking.gb28181.mocking.service.zlm.hook;
 
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
+import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
 import cn.skcks.docking.gb28181.mocking.service.zlm.hook.dto.ZlmPublishDTO;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @Data
@@ -19,6 +22,9 @@ import java.util.concurrent.ConcurrentMap;
 @RequiredArgsConstructor
 public class ZlmPublishHookService {
     private final ZlmHookConfig zlmHookConfig;
+
+    @Qualifier(MockingExecutor.EXECUTOR_BEAN_NAME)
+    private final Executor executor;
 
     public interface ZlmPublishHookHandler {
         void handler();
@@ -41,12 +47,14 @@ public class ZlmPublishHookService {
 
         ConcurrentMap<String, ZlmPublishHookHandler> handlers = getHandler(app);
         Optional.ofNullable(handlers.remove(streamId)).ifPresent((handler) -> {
-            handler.handler();
-            try {
-                Thread.sleep(zlmHookConfig.getDelay().toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            executor.execute(()->{
+                handler.handler();
+                try {
+                    Thread.sleep(zlmHookConfig.getDelay().toMillis());
+                } catch (InterruptedException e) {
+                    log.error("{}", e.getMessage());
+                }
+            });
         });
     }
 }

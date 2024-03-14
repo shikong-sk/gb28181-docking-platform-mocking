@@ -1,16 +1,19 @@
 package cn.skcks.docking.gb28181.mocking.service.zlm.hook;
 
 import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
+import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @Data
@@ -18,6 +21,9 @@ import java.util.concurrent.ConcurrentMap;
 @RequiredArgsConstructor
 public class ZlmStreamNoneReaderHookService {
     private final ZlmHookConfig zlmHookConfig;
+
+    @Qualifier(MockingExecutor.EXECUTOR_BEAN_NAME)
+    private final Executor executor;
 
     public interface ZlmStreamNoneReaderHookHandler {
         void handler();
@@ -37,12 +43,14 @@ public class ZlmStreamNoneReaderHookService {
 
         ConcurrentMap<String, ZlmStreamNoneReaderHookHandler> handlers = getHandler(app);
         Optional.ofNullable(handlers.remove(streamId)).ifPresent((handler) -> {
-            try {
-                Thread.sleep(zlmHookConfig.getDelay().toMillis());
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            handler.handler();
+            executor.execute(()->{
+                try {
+                    Thread.sleep(zlmHookConfig.getDelay().toMillis());
+                } catch (InterruptedException ignored) {
+
+                }
+                handler.handler();
+            });
         });
     }
 }
