@@ -28,7 +28,7 @@ public class MockingExecutor{
     public ThreadPoolTaskExecutor sipTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(CPU_NUM * 2);
-        executor.setMaxPoolSize(100);
+        executor.setMaxPoolSize(1000);
         executor.setQueueCapacity(10000);
         executor.setKeepAliveSeconds(30);
         executor.setThreadNamePrefix(THREAD_NAME_PREFIX);
