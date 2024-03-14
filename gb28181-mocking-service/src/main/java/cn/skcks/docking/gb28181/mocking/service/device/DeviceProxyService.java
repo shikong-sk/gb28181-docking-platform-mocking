@@ -241,7 +241,12 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
-            scheduledExecutorService.schedule(() -> {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                log.error("{}", e.getMessage());
+            }
+
                 trying(request);
                 sendOkResponse.run();
                 String ackKey = GenericSubscribe.Helper.getKey(Request.ACK, callId);
@@ -292,7 +297,7 @@ public class DeviceProxyService {
                         }
                     }
                 });
-            }, 1, TimeUnit.SECONDS);
+
         };
     }
 
