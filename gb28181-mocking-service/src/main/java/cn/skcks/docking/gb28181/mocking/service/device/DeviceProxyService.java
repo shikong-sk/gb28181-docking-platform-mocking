@@ -108,7 +108,7 @@ public class DeviceProxyService {
 
     private final FfmpegConfig ffmpegConfig;
 
-    ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
 
     public interface TaskProcessor {
         void process(Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc);
@@ -148,7 +148,6 @@ public class DeviceProxyService {
                     log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
                             .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
-                    throw new RuntimeException(e);
                 }
             });
         });
@@ -232,7 +231,7 @@ public class DeviceProxyService {
                             executeResultHandler.waitFor();
                         } catch (Exception e) {
                             sendBye(request,device,"");
-                            throw new RuntimeException(e);
+                            log.error("{}", e.getMessage());
                         }
                     }
                 });
@@ -289,7 +288,7 @@ public class DeviceProxyService {
                             executeResultHandler.waitFor();
                         } catch (Exception e) {
                             sendBye(request, device, "");
-                            throw new RuntimeException(e);
+                            log.error("{}", e.getMessage());
                         }
                     }
                 });
