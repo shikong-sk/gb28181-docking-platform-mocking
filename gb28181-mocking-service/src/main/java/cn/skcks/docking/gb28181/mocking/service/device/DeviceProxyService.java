@@ -250,9 +250,15 @@ public class DeviceProxyService {
 
     public TaskProcessor downloadTask(){
         return (Runnable sendOkResponse,SIPRequest request,String callId,String fromUrl, String toAddr,int toPort, MockingDevice device, String key, long time,String ssrc)->{
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                log.error("{}", e.getMessage());
+            }
             String ackKey = GenericSubscribe.Helper.getKey(Request.ACK, callId);
             subscribe.getAckSubscribe().addPublisher(ackKey, 1, TimeUnit.MINUTES);
             subscribe.getAckSubscribe().addSubscribe(ackKey, new Flow.Subscriber<>() {
+                private SIPRequest ackRequest;
                 @Override
                 public void onSubscribe(Flow.Subscription subscription) {
                     subscription.request(1);
@@ -260,6 +266,7 @@ public class DeviceProxyService {
 
                 @Override
                 public void onNext(SIPRequest item) {
+                    ackRequest = item;
                     subscribe.getAckSubscribe().delPublisher(ackKey);
                 }
 
@@ -271,27 +278,29 @@ public class DeviceProxyService {
                 public void onComplete() {
                     Flow.Subscriber<SIPRequest> task = ffmpegTask(request, downloadTask, callId, key, device);
                     try {
-                        FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
-                        if (!ffmpegConfig.getRtp().getUseRtpToDownload()) {
-                            String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
-                            executor.execute(()->{
-                                try {
-                                    requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
-                                } catch (Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });
+                        if(ackRequest != null){
+                            FfmpegExecuteResultHandler executeResultHandler = mediaStatus(request, device, key);
+                            if (!ffmpegConfig.getRtp().getUseRtpToDownload()) {
+                                String zlmRtpUrl = getZlmRtmpUrl(DEFAULT_ZLM_APP, callId);
+                                executor.execute(()->{
+                                    try {
+                                        requestZlmPushStream(request, callId, fromUrl, toAddr, toPort, device, key, time, ssrc);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                });
 
-                            Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
-                            scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
-                            downloadTask.put(device.getDeviceCode(), executor);
-                        } else {
-                            String rtpUrl = getRtpUrl(request);
-                            Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
-                            scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
-                            downloadTask.put(device.getDeviceCode(), executor);
+                                Executor executor = pushDownload2RtpTask(fromUrl, zlmRtpUrl, time + 60, executeResultHandler);
+                                scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
+                                downloadTask.put(device.getDeviceCode(), executor);
+                            } else {
+                                String rtpUrl = getRtpUrl(request);
+                                Executor executor = pushDownload2RtpTask(fromUrl, rtpUrl, time + 60, executeResultHandler);
+                                scheduledExecutorService.schedule(task::onComplete, time + 60, TimeUnit.SECONDS);
+                                downloadTask.put(device.getDeviceCode(), executor);
+                            }
+                            executeResultHandler.waitFor();
                         }
-                        executeResultHandler.waitFor();
                     } catch (Exception e) {
                         sendBye(request, device, "");
                         log.error("{}", e.getMessage());
