@@ -134,9 +134,9 @@ public class DeviceProxyService {
                     .withStopStrategy(StopStrategies.stopAfterAttempt(10 * 1000))
                     .build();
         zlmPublishHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            scheduledExecutorService.submit(()->{
+            executor.execute(()->{
                 try {
-                    retryer.call(()->{
+                    StartSendRtpResp sendRtpResp = retryer.call(() -> {
                         StartSendRtp startSendRtp = new StartSendRtp();
                         startSendRtp.setApp(DEFAULT_ZLM_APP);
                         startSendRtp.setStream(callId);
@@ -149,6 +149,8 @@ public class DeviceProxyService {
 //                    log.debug("startSendRtpResp {}",startSendRtpResp);
                         return startSendRtpResp;
                     });
+
+                    log.info("sendRtp 推流成功 {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), sendRtpResp);
                 } catch (Exception e) {
                     log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
@@ -165,7 +167,7 @@ public class DeviceProxyService {
 
     private void zlmStreamRegistHookEvent(String app, String callId, String ssrc){
         zlmStreamChangeHookService.getUnregistHandler(app).put(callId,()->{
-            scheduledExecutorService.submit(()->{
+            executor.execute(()->{
                 ScheduledFuture<?> schedule = scheduledExecutorService.schedule(() -> {
                     StopSendRtp stopSendRtp = new StopSendRtp();
                     stopSendRtp.setApp(app);
