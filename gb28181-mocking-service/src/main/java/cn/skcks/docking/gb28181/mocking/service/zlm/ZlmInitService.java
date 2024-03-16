@@ -8,6 +8,7 @@ import cn.skcks.docking.gb28181.mocking.config.sip.ZlmHookConfig;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +18,8 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class ZlmInitService {
+public class ZlmInitService implements SmartLifecycle {
+    private boolean running;
     private final ZlmMediaService zlmMediaService;
     private final ZlmHookConfig zlmHookConfig;
     @PostConstruct
@@ -32,5 +34,25 @@ public class ZlmInitService {
         config.getRtmp().setHandshakeSecond(15);
         config.getRtmp().setKeepAliveSecond(10);
         zlmMediaService.setServerConfig(config);
+    }
+
+    @Override
+    public void start() {
+        running = true;
+    }
+
+    @Override
+    public void stop() {
+        ZlmResponse<List<ServerConfig>> serverConfig = zlmMediaService.getServerConfig();
+        List<ServerConfig> data = serverConfig.getData();
+        ServerConfig config = data.get(0);
+        HookConfig hook = config.getHook();
+        hook.setOnPublish("");
+        running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 }
