@@ -76,6 +76,7 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -124,15 +125,21 @@ public class DeviceProxyService {
         MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
         boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
 //        zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
-            Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
-                    .retryIfResult(resp -> resp.getLocalPort() == null || resp.getLocalPort() <= 0)
-                    .retryIfException()
-                    .retryIfRuntimeException()
-                    // 重试间隔
-                    .withWaitStrategy(WaitStrategies.fixedWait(1, TimeUnit.MILLISECONDS))
-                    // 重试次数
-                    .withStopStrategy(StopStrategies.stopAfterAttempt(10 * 1000))
-                    .build();
+        AtomicReference<String> failMag = new AtomicReference<>("");
+        Retryer<StartSendRtpResp> retryer = RetryerBuilder.<StartSendRtpResp>newBuilder()
+                .retryIfResult(resp -> {
+                    if(resp != null){
+                        failMag.set(resp.toString());
+                    }
+                    return resp.getLocalPort() == null || resp.getLocalPort() <= 0;
+                })
+                .retryIfException()
+                .retryIfRuntimeException()
+                // 重试间隔
+                .withWaitStrategy(WaitStrategies.fixedWait(1, TimeUnit.MILLISECONDS))
+                // 重试次数
+                .withStopStrategy(StopStrategies.stopAfterAttempt(10 * 1000))
+                .build();
         zlmPublishHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             executor.execute(()->{
                 try {
@@ -152,7 +159,7 @@ public class DeviceProxyService {
 
                     log.info("sendRtp 推流成功 {} {}, req => {}, resp => {}", device.getDeviceCode(),device.getGbChannelId(), startSendRtp, sendRtpResp);
                 } catch (Exception e) {
-                    log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
+                    log.error("zlm rtp 推流失败, {}, {} {} {}, {}", failMag.get(), device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
                             .ifPresent(ZlmStreamChangeHookService.ZlmStreamChangeHookHandler::handler);
                 }
