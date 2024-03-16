@@ -136,8 +136,8 @@ public class DeviceProxyService {
         zlmPublishHookService.getHandler(DEFAULT_ZLM_APP).put(callId,()->{
             executor.execute(()->{
                 try {
+                    StartSendRtp startSendRtp  = new StartSendRtp();
                     StartSendRtpResp sendRtpResp = retryer.call(() -> {
-                        StartSendRtp startSendRtp = new StartSendRtp();
                         startSendRtp.setApp(DEFAULT_ZLM_APP);
                         startSendRtp.setStream(callId);
                         startSendRtp.setSsrc(ssrc);
@@ -150,7 +150,7 @@ public class DeviceProxyService {
                         return startSendRtpResp;
                     });
 
-                    log.info("sendRtp 推流成功 {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), sendRtpResp);
+                    log.info("sendRtp 推流成功 {} {}, req => {}, resp => {}", device.getDeviceCode(),device.getGbChannelId(), startSendRtp, sendRtpResp);
                 } catch (Exception e) {
                     log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     Optional.ofNullable(zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).remove(callId))
