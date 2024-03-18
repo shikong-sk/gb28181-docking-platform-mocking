@@ -24,6 +24,12 @@ public class DeviceProxyConfig {
      * 是否只通过代理拉取指定时间范围内的视频查询请求
      */
     private Boolean proxyVideoInTimeRange = true;
+
+    /**
+     * 实时视频单次允许最大播放时长
+     */
+    private Duration realTimeVideoMaxPlayTime  = Duration.ofMinutes(15);
+
     /**
      * 代理该时间段内的历史视频查询请求
      */

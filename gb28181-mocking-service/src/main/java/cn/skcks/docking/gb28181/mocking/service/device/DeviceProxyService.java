@@ -580,6 +580,21 @@ public class DeviceProxyService {
             MediaDescription mediaDescription = (MediaDescription)gb28181Description.getMediaDescriptions(true).get(0);
             boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
 
+            ScheduledFuture<?> schedule = scheduledExecutorService.schedule(() -> {
+                log.warn("到达最长播放时间, 强制关闭实时视频播放");
+                sendBye(request, device, "");
+                log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
+                RedisUtil.KeyOps.delete(cacheKey);
+
+                StopSendRtp stopSendRtp = new StopSendRtp();
+                stopSendRtp.setApp(DEFAULT_ZLM_APP);
+                stopSendRtp.setStream(callId);
+                stopSendRtp.setSsrc(ssrc);
+
+                log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", DEFAULT_ZLM_APP, callId, ssrc);
+                zlmMediaService.stopSendRtp(stopSendRtp);
+            }, proxyConfig.getRealTimeVideoMaxPlayTime().toMillis(), TimeUnit.MILLISECONDS);
+
             Retryer<StartSendRtpResp> rtpRetryer = rtpRetryer();
             zlmStreamChangeHookService.getRegistHandler(DEFAULT_ZLM_APP).put(callId,()->{
                 try {
@@ -599,6 +614,9 @@ public class DeviceProxyService {
                 } catch (Exception e){
                     log.error("zlm rtp 推流失败, {} {} {}, {}", device.getDeviceCode(),device.getGbChannelId(), callId, e.getMessage());
                     sendBye(request, device, "");
+                    log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
+                    RedisUtil.KeyOps.delete(cacheKey);
+                    schedule.cancel(true);
                 }
             });
 
@@ -610,6 +628,8 @@ public class DeviceProxyService {
 
                 log.info("结束 zlm rtp 推流, app {}, stream {}, ssrc {}", DEFAULT_ZLM_APP, callId, ssrc);
                 zlmMediaService.stopSendRtp(stopSendRtp);
+                log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
+                RedisUtil.KeyOps.delete(cacheKey);
             });
 
             Flow.Subscriber<SIPRequest> subscriber = zlmByeSubscriber(key,request,device);
@@ -618,7 +638,6 @@ public class DeviceProxyService {
             subscribe.getByeSubscribe().addPublisher(key);
             subscribe.getByeSubscribe().addSubscribe(key, subscriber);
         } catch (Exception e) {
-
             log.error("zlm 代理拉流失败",e);
             sendBye(request, device, "");
         }
