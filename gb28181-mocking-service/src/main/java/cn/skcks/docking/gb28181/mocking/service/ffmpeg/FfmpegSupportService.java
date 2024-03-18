@@ -55,11 +55,26 @@ public class FfmpegSupportService {
         FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
         String logLevelParam = StringUtils.joinWith(" ","-loglevel", rtp.getLogLevel());
         String command = StringUtils.joinWith(" ", ffmpegConfig.getFfmpeg(), logLevelParam, inputParam, outputParam);
+        log.info("ffmpeg 命令 => {}", command);
         CommandLine commandLine = CommandLine.parse(command);
         Executor executor = new DefaultExecutor();
         ExecuteWatchdog watchdog = new ExecuteWatchdog(unit.toMillis(time));
         executor.setWatchdog(watchdog);
         executor.execute(commandLine, resultHandler);
+        return executor;
+    }
+
+    @SneakyThrows
+    public Executor ffmpegConcatExecutor(String concatConfigFile, String outputFile, ExecuteResultHandler executeResultHandler){
+        FfmpegConfig.Rtp rtp = ffmpegConfig.getRtp();
+        String logLevelParam = StringUtils.joinWith(" ","-loglevel", rtp.getLogLevel());
+        String inputParam = String.format("-y -f concat -safe 0 -i \"%s\"", concatConfigFile);
+        String outputParam = String.format("-c copy \"%s\"", outputFile);
+        String command = StringUtils.joinWith(" ", ffmpegConfig.getFfmpeg(), logLevelParam, inputParam, outputParam);
+        log.info("ffmpeg 视频合并 命令 => {}", command);
+        CommandLine commandLine = CommandLine.parse(command);
+        Executor executor = new DefaultExecutor();
+        executor.execute(commandLine, executeResultHandler);
         return executor;
     }
 }

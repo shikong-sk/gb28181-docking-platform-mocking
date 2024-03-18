@@ -46,6 +46,10 @@ public class DeviceProxyConfig {
     public static class PreDownloadForRecordInfo {
         private Boolean enable = true;
         private Duration timeRange = Duration.ofMinutes(5);
+        /**
+         * 分片时长, 当请求时间超过该时长时，将分片下载
+         */
+        private Duration timeSplit = Duration.ofSeconds(30);
         private String cachePath = "./record";
     }
 }

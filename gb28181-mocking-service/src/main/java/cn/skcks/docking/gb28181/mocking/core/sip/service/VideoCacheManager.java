@@ -3,16 +3,20 @@ package cn.skcks.docking.gb28181.mocking.core.sip.service;
 import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.date.DatePattern;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.net.url.UrlBuilder;
 import cn.skcks.docking.gb28181.common.json.JsonResponse;
 import cn.skcks.docking.gb28181.mocking.config.sip.DeviceProxyConfig;
 import cn.skcks.docking.gb28181.mocking.core.sip.executor.MockingExecutor;
+import cn.skcks.docking.gb28181.mocking.service.ffmpeg.FfmpegSupportService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -24,10 +28,15 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.concurrent.*;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -37,6 +46,8 @@ public class VideoCacheManager {
 
     @Qualifier(MockingExecutor.EXECUTOR_BEAN_NAME)
     private final Executor executor;
+
+    private final FfmpegSupportService ffmpegSupportService;
 
     private final TimedCache<String, CompletableFuture<JsonResponse<String>>> tasks =
             CacheUtil.newTimedCache(TimeUnit.MINUTES.toMillis(30));
@@ -85,13 +96,78 @@ public class VideoCacheManager {
 
     @SneakyThrows
     protected CompletableFuture<JsonResponse<String>> downloadVideo(String deviceCode, Date startTime, Date endTime) {
-        File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName(deviceCode, startTime, endTime) + ".mp4").toFile();
+        String fileName = fileName(deviceCode, startTime, endTime);
+        File realFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),fileName + ".mp4").toFile();
         if(realFile.exists()){
             log.info("文件 {} 已缓存, 直接返回", realFile.getAbsolutePath());
             return CompletableFuture.completedFuture(JsonResponse.success(realFile.getAbsolutePath()));
         }
 
         return CompletableFuture.supplyAsync(()->{
+            long between = DateUtil.between(startTime, endTime, DateUnit.SECOND);
+            long splitTime = deviceProxyConfig.getPreDownloadForRecordInfo().getTimeSplit().getSeconds();
+            if(between > splitTime){
+                log.info("时间间隔超过 {} 秒, 将分片下载", splitTime);
+                DateTime splitStartTime = DateUtil.date(startTime);
+                DateTime splitEndTime = DateUtil.offsetSecond(startTime, (int) splitTime);
+                List<CompletableFuture<JsonResponse<String>>> completableFutures = new ArrayList<>();
+
+                while(splitEndTime.getTime() < endTime.getTime()){
+                    String splitFileName = fileName(deviceCode, splitStartTime, splitEndTime);
+                    File tmpFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(),splitFileName + ".mp4.tmp").toFile();
+                    if(tmpFile.exists()){
+                        tmpFile.delete();
+                        log.info("删除已存在但未完成下载的临时文件 => {}", tmpFile.getAbsolutePath());
+                    }
+                    // 添加分片任务
+                    addTask(deviceCode, splitStartTime, splitEndTime);
+                    completableFutures.add(get(deviceCode, splitStartTime, splitEndTime));
+                    // 更新起止时间
+                    splitStartTime = DateUtil.offsetSecond(splitStartTime, (int) splitTime);
+                    splitEndTime = DateUtil.offsetSecond(splitEndTime, (int) splitTime);
+                    if(splitEndTime.getTime() >= endTime.getTime()){
+                        splitEndTime = DateUtil.date(endTime);
+                        addTask(deviceCode, splitStartTime, splitEndTime);
+                        completableFutures.add(get(deviceCode, splitStartTime, splitEndTime));
+                        break;
+                    }
+                }
+
+                CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new));
+                String concatFileName = fileName + ".mp4.concat";
+                File concatFile = Paths.get(deviceProxyConfig.getPreDownloadForRecordInfo().getCachePath(), concatFileName).toFile();
+                if(concatFile.exists()){
+                    concatFile.delete();
+                    log.info("删除已存在但未完成合并的临时合并配置文件 => {}", concatFile.getAbsolutePath());
+                }
+
+                try {
+                    concatFile.createNewFile();
+                    try(FileWriter fileWriter = new FileWriter(concatFile)){
+                        for (CompletableFuture<JsonResponse<String>> result : completableFutures) {
+                            String splitFilePath = result.get().getData();
+                            fileWriter.write(String.format("file \"%s\"\n", splitFilePath));
+                        }
+                    }
+                    log.info("生成临时合并配置文件 {}", concatFile.getAbsolutePath());
+
+                    log.info("开始合并视频 => {}", realFile.getAbsolutePath());
+                    DefaultExecuteResultHandler executeResultHandler = new DefaultExecuteResultHandler();
+                    ffmpegSupportService.ffmpegConcatExecutor(concatFile.getAbsolutePath(), realFile.getAbsolutePath(), executeResultHandler);
+                    executeResultHandler.waitFor();
+
+                    if(realFile.exists()){
+                        log.info("视频合并成功 => {}", realFile.getAbsolutePath());
+                        return JsonResponse.success(realFile.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    log.error("合并分片视频异常 => {}", e.getMessage());
+                    return JsonResponse.error(e.getMessage());
+                } finally {
+                    System.gc();
+                    log.info("删除临时合并配置文件 {} => {}", concatFile.getAbsolutePath(), concatFile.delete());
+                }
+            }
             final String url = UrlBuilder.of(deviceProxyConfig.getUrl())
                     .addPath("video")
                     .addQuery("device_id", deviceCode)
@@ -127,6 +203,7 @@ public class VideoCacheManager {
                 return JsonResponse.success(realFile.getAbsolutePath());
             } catch (Exception e) {
                 log.error("视频下载失败 => {}", e.getMessage());
+                System.gc();
                 file.delete();
                 return JsonResponse.error(e.getMessage());
             }
