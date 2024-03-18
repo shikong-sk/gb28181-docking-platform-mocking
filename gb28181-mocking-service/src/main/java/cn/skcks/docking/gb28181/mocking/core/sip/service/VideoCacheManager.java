@@ -146,7 +146,9 @@ public class VideoCacheManager {
                     try(FileWriter fileWriter = new FileWriter(concatFile)){
                         for (CompletableFuture<JsonResponse<String>> result : completableFutures) {
                             String splitFilePath = result.get().getData();
-                            fileWriter.write(String.format("file \"%s\"\n", splitFilePath));
+                            String config = String.format("file '%s'\n", splitFilePath);
+                            fileWriter.write(config);
+                            log.debug("{}", config);
                         }
                     }
                     log.info("生成临时合并配置文件 {}", concatFile.getAbsolutePath());
