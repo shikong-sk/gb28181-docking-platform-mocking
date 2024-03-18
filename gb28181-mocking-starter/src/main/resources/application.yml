@@ -79,6 +79,7 @@ proxy:
     url: http://192.168.2.3:18183
     #url: http://10.10.10.20:18183
     #url: http://192.168.1.241:28181
+    real-time-video-max-play-time: 15m
 ffmpeg-support:
   task:
     # 最大同时推流任务数, <= 0 时不做限制
