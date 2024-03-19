@@ -581,7 +581,7 @@ public class DeviceProxyService {
             boolean tcp = StringUtils.containsIgnoreCase(mediaDescription.getMedia().getProtocol(), "TCP");
 
             ScheduledFuture<?> schedule = scheduledExecutorService.schedule(() -> {
-                log.warn("到达最长播放时间 {}, 强制关闭实时视频播放 {} {}", proxyConfig.getProxyTimeRange(), device.getGbChannelId(), callId);
+                log.warn("到达最长播放时间 {}, 强制关闭实时视频播放 {} {}", proxyConfig.getRealTimeVideoMaxPlayTime(), device.getGbChannelId(), callId);
                 sendBye(request, device, "");
                 log.info("关闭拉流代理 {}", zlmMediaService.delStreamProxy(proxyKey));
                 RedisUtil.KeyOps.delete(cacheKey);
