@@ -621,6 +621,7 @@ public class DeviceProxyService {
             });
 
             zlmStreamChangeHookService.getUnregistHandler(DEFAULT_ZLM_APP).put(callId,()-> {
+                schedule.cancel(true);
                 StopSendRtp stopSendRtp = new StopSendRtp();
                 stopSendRtp.setApp(DEFAULT_ZLM_APP);
                 stopSendRtp.setStream(callId);
@@ -719,9 +720,11 @@ public class DeviceProxyService {
 
             optionalZlmStreamChangeHookHandler.ifPresent(handler -> {
                 log.warn("流改变事件未结束 ZlmStreamChange {} {}, 强制结束", DEFAULT_ZLM_APP,callId);
+                handler.handler();
             });
             optionalZlmStreamNoneReaderHandler.ifPresent(handler -> {
                 log.warn("流无人观看事件未结束 ZlmStreamNoneReader {} {}, 强制结束", DEFAULT_ZLM_APP, callId);
+                handler.handler();
             });
             sendBye(request,device,key);
         }
